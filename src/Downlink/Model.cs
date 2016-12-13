@@ -19,8 +19,6 @@ namespace Downlink
         public static float FrameLatency = FrameLength * 8 / DownlinkRate;
         public static float GDSLatency = 0f;  // for now
 
-
-
         public static float DriverDecisionTime = 90f;
 
         public const float RoverDownlinkRate = 60000f; // bits/sec
@@ -43,8 +41,21 @@ namespace Downlink
         public const float PayloadWithoutDOCBitsPerSecond = AvionicsProspectingBitsPerSecond + VMLProspectingBitsPerSecond + NSSProspectingBitsPerSecond + NIRVSSProspectingBitsPerSecond;
         public const float DOCProspectingBitsPerSecond = 0f;
 
+        public const int DOCHighResNarrow = (((2048 * 2048 * 12) / 3) + 112) / 8;
+        public const int DOCLowContrastNarrow = ((256 * 256 * 8) / 3 + 112) / 8;
+        public const int DOCLowContrastMedium = ((256 * 256 * 8) / 3 + 112) / 8;
+        public const int DOCLowContrastFull = ((256 * 256 * 8) / 3 + 112) / 8;  // One every 2 sec
+        public const int DOCSingleLEDScale3 = ((256 * 256 * 12) / 3 + 112)/8;  // one every 2.5 sec
+        public const int DOCAllLEDScale3 = ((256 * 256 * 12) / 3 + 112) / 8;
+        public const int DOCAllLEDScale2 = ((512 * 512 * 12) / 3 + 112) / 8;
+        public const int DOCAllLEDScale1 = ((2048 * 2048 * 12) / 3 + 112) / 8;
 
-        public const float EmergencyStopTime = 5000f;
+        public const float EmergencyStopTime = 50000000f;
+
+        public bool PrintMessages = false;
+        public bool PrintReport = false;
+        public List<string> EventMessages;
+        public List<string> ReportMessages;
 
         #endregion Global Variables
 
@@ -57,17 +68,24 @@ namespace Downlink
 
         public bool StopRequest = false;
 
-        public PacketQueue VC1PacketQueue;
-        public PacketQueue VC2PacketQueue;
-        public PacketQueue VC3PacketQueue;
+        public PacketQueue[] VCPacketQueue = null;
+        public int RoverHighPriorityVC = 0;
+        public int RoverLowPriorityVC = 0;
+        public int RoverImageVC = 1;
+        public int PayloadHighPriority = 2;
+        public int PayloadHighPriorityImage = 3;
+        public int PayloadLowPriorityImage = 4;
 
         public Rover TheRover;
         public Driver TheDriver;
         public GroundSystem TheGroundSystem;
 
+        public enum ModelCase { Rails, ScienceStation }
+        public ModelCase TheCase = ModelCase.Rails;
+
         #endregion Model State Variables
 
-        public enum APID { UnassignedAPID, RoverHealth, RoverImagePair, PayloadGeneral, DOCImage }
+        public enum APID { IdlePacket, RoverHealth, RoverImagePair, PayloadGeneral, DOCProspectingImage, DOCWaypointImage, AllAPIDS }
 
         public static void Enqueue(Thunk t)
         {
@@ -94,7 +112,6 @@ namespace Downlink
             {
                 var evt = EventQueue.Dequeue();
                 Time = evt.Time;
-                //Console.WriteLine(Time);
                 evt.Execute(this);
 
                 if (Time >= EmergencyStopTime)
@@ -108,6 +125,8 @@ namespace Downlink
         public virtual void Run()
         {
             TheModel = this;
+            EventMessages = new List<string>();
+            ReportMessages = new List<string>();
             Start();
             Loop();
             Stop();
@@ -252,11 +271,12 @@ namespace Downlink
 
         public class Rover
         {
-
+            public bool IsDriving = false;
             public float Position = 0f;
 
             public void Drive()
             {
+                IsDriving = true;
                 TheModel.Message("Rover starts driving");
                 var delta = DriveStep / DriveSpeed;
                 Model.Enqueue(Model.TheModel.Time + delta, () => StopDriving());
@@ -264,9 +284,12 @@ namespace Downlink
 
             public void StopDriving()
             {
+                IsDriving = false;
                 TheModel.Message("Rover stops driving");
                 Position += DriveStep;
-                TheModel.VC2PacketQueue.Receive(new Packet { APID = APID.RoverImagePair, Length = NavPayload, Timestamp = TheModel.Time });
+                TheModel.VCPacketQueue[TheModel.RoverImageVC].Receive(new Packet { APID = APID.RoverImagePair, Length = NavPayload, Timestamp = TheModel.Time });
+
+                // DOC images are triggered in ModelDocGeneration
             }
         }
 
@@ -275,10 +298,10 @@ namespace Downlink
             public int CommandCount = 0;
             public void SendDriveCommand()
             {
-                if (CommandCount++ > 0)
+                if (CommandCount++ > 10)
                 {
+                    TheModel.Message(@"The driver is ready to send command but stopping");
                     TheModel.StopRequest = true;
-                    return;
                 }
                 TheModel.Message("Driver sends drive command");
                 Enqueue(new Thunk(TheModel.Time + UplinkLatency, () => TheModel.TheRover.Drive()));
@@ -286,7 +309,8 @@ namespace Downlink
             public void EvalImage(Packet p)
             {
                 TheModel.Message("Driver starts evaluating image");
-                Enqueue(new Thunk(TheModel.Time + DriverDecisionTime, () => TheModel.TheDriver.SendDriveCommand()));
+                if (TheModel.TheCase == ModelCase.Rails)
+                    Enqueue(new Thunk(TheModel.Time + DriverDecisionTime, () => TheModel.TheDriver.SendDriveCommand()));
             }
         }
 
@@ -295,7 +319,7 @@ namespace Downlink
             public long TotalBytesReceived = 0L;
             public long TotalBytesInPackets = 0L;
             public long FrameCount = 0L;
-            public long[] FrameCounter = new long[4];
+            public long[] FrameCounter = new long[5];
 
             public List<Packet> Packets = new List<Packet>();
             public void Receive(Frame f)
@@ -312,6 +336,16 @@ namespace Downlink
                         Packets.Add(packet);
                         if (packet.APID == APID.RoverImagePair)
                             TheModel.TheDriver.EvalImage(packet);
+                        if (packet.APID == APID.DOCWaypointImage)
+                        {
+                            TheModel.Message("Received DOC Waypoint image");  // Bug: This should be the last of 4, not any DOC Waypoint image
+                            if (TheModel.TheCase == ModelCase.ScienceStation)
+                            {
+                                TheModel.Message("NIRVSS allows driver to send drive command");
+                                Enqueue(new Thunk(TheModel.Time + UplinkLatency, () => TheModel.TheDriver.SendDriveCommand()));
+                                //TheModel.StopRequest = true;
+                            }
+                        }
                     }
             }
         }
@@ -320,11 +354,13 @@ namespace Downlink
         {
             public int DropCount = 0;
             public int Size;
+            public int Count = 0;
             Queue<Packet> Queue = new Queue<Packet>();
             Stack<Packet> Stack = new Stack<Packet>();
             public void Enqueue(Packet p)
             {
                 Receive(p);
+                Count++;
             }
             public void Receive(Packet p)
             {
@@ -333,8 +369,36 @@ namespace Downlink
                 else
                     DropCount++;
             }
-            public void PushBack(Packet p) { Stack.Push(p); }
-            public Packet Dequeue() => Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
+            public void PushBack(Packet p)
+            {
+                Stack.Push(p);
+                Count++;
+            }
+            public Packet Dequeue()
+            {
+                var p = Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
+                if (p != null) Count--;
+                return p;
+            }
+            public void PacketsInFlight(APID pattern, ref int packetCount, ref int byteCount)
+            {
+                var a = Queue.ToArray();
+                for (var i = 0; i < a.Length; i++)
+                {
+                    if (!MatchingAPID(pattern, a[i].APID))
+                        continue;
+                    packetCount++;
+                    byteCount += a[i].Length;
+                }
+                a = Stack.ToArray();
+                for (var i = 0; i < a.Length; i++)
+                {
+                    if (!MatchingAPID(pattern, a[i].APID))
+                        continue;
+                    packetCount++;
+                    byteCount += a[i].Length;
+                }
+            }
         }
 
         #endregion Classes
@@ -353,16 +417,47 @@ namespace Downlink
             Enqueue(new PacketGenerator { Time = time, APID = apid, Delay = delay, Length = packetSize, Receiver = r });
         }
 
-        public void Message(string msg)
+        public void Message(string msg, params object[] args)
         {
-            Console.WriteLine(@"{0} {1}", Time.ToString("F3").PadLeft(12), msg);
+            var msg1 = string.Format(msg, args);
+            var fullmsg = string.Format(@"{0} {1}", Time.ToString("F3").PadLeft(12), msg1);
+            if (PrintMessages)
+                Console.WriteLine(fullmsg);
+            else
+                EventMessages.Add(fullmsg);
         }
+
+        public void Message()
+        {
+            if (PrintMessages)
+                Console.WriteLine();
+            else
+                EventMessages.Add(String.Empty);
+        }
+
+        public void Report(string msg, params object[] args)
+        {
+            if (PrintReport)
+                Console.WriteLine(msg, args);
+            else
+                ReportMessages.Add(string.Format(msg, args));
+        }
+
+        public void Report()
+        {
+            if (PrintReport)
+                Console.WriteLine();
+            else
+                ReportMessages.Add(String.Empty);
+        }
+
+        public static bool MatchingAPID(APID pattern, APID concrete) => pattern == APID.AllAPIDS || pattern == concrete;
 
         #endregion Helper Methods
 
-    }
+        }
 
-    public class SimpleModel : Model
+        public class SimpleModel : Model
     {
         List<VirtualChannelBuffer> Buffers;
         public override void Start()
@@ -372,23 +467,44 @@ namespace Downlink
             TheDriver = new Driver();
             TheGroundSystem = new GroundSystem();
 
-            VC1PacketQueue = new PacketQueue { Size = 100 };
-            VC2PacketQueue = new PacketQueue { Size = 100 };
-            VC3PacketQueue = new PacketQueue { Size = 100 };
-
-            Buffers = new List<VirtualChannelBuffer>
-            {
-                new VirtualChannelBuffer { VirtualChannel = 1, PacketQueue = VC1PacketQueue, Timeout = 2f },
-                new VirtualChannelBuffer { VirtualChannel = 2, PacketQueue = VC2PacketQueue, Timeout = 5f },
-                new VirtualChannelBuffer { VirtualChannel = 3, PacketQueue = VC3PacketQueue, Timeout = 10f },
-            };
+            VCPacketQueue = Enumerable.Range(0, 5).Select(i => new PacketQueue { Size = 1200 }).ToArray();
+            var timeouts = new float[] { 2f, 5f, 6f, 7f, 10f };
+            Buffers = Enumerable.Range(0, VCPacketQueue.Length).Select(i => new VirtualChannelBuffer { VirtualChannel = i, PacketQueue = VCPacketQueue[i] }).ToList();
+            for (var i = 0; i < VCPacketQueue.Length; i++)
+                Buffers[i].Timeout = timeouts[i];
 
             // TO_DRIVE = 46669.9 bits/sec
-            StartPacketGenerator(VC1PacketQueue, APID.RoverHealth, RoverHealthBitsPerSecond, 100, Time);
-            StartPacketGenerator(VC3PacketQueue, APID.PayloadGeneral, PayloadWithoutDOCBitsPerSecond, 100, Time+0.1f);          
+            StartPacketGenerator(VCPacketQueue[RoverHighPriorityVC], APID.RoverHealth, RoverHealthBitsPerSecond, 100, Time);
+            StartPacketGenerator(VCPacketQueue[PayloadHighPriority], APID.PayloadGeneral, PayloadWithoutDOCBitsPerSecond, 100, Time+0.1f);
+            Enqueue(new Thunk(Time, () => ModelDocGeneration()));
 
             Enqueue(new FrameEngine { Time = Time, Delay = FrameTime });
-            Enqueue(new Thunk(Time, () => TheDriver.SendDriveCommand()));
+            if (TheCase == ModelCase.Rails)
+                Enqueue(new Thunk(Time, () => TheDriver.SendDriveCommand()));
+        }
+
+        // Runs at 1 Hz
+        int _DocWaypointImageCount = 0;
+        void ModelDocGeneration()
+        {
+            if (TheModel.TheRover.IsDriving)
+            {
+                var p = new Packet { APID = APID.DOCProspectingImage, Length = DOCLowContrastNarrow, Timestamp = Time };
+                VCPacketQueue[PayloadHighPriorityImage].Receive(p);
+                //Message(@"  Sending driving doc image");
+                _DocWaypointImageCount = 0;
+            }
+            else
+            {
+                if (_DocWaypointImageCount < 9)  // Should be 9 images not 4 -- testing
+                {
+                    var p = new Packet { APID = APID.DOCWaypointImage, Length = DOCAllLEDScale3, Timestamp = Time };
+                    VCPacketQueue[_DocWaypointImageCount < 4 ? PayloadHighPriorityImage : PayloadLowPriorityImage].Receive(p);
+                    Message(@"  Sending waypoint doc image {0}", _DocWaypointImageCount);
+                    _DocWaypointImageCount++;
+                }
+            }
+            Enqueue(new Thunk(TheModel.Time + 1f, () => ModelDocGeneration()));
         }
 
         // Debugging
@@ -457,8 +573,6 @@ namespace Downlink
                     if (frame.Capacity >= f.Length)
                     {   // can fit
                         frame.Add(f);
-                        //if (f.Packet.APID == APID.RoverImagePair)
-                        //    Console.WriteLine(@"here");
                     }
                     else
                     {
@@ -493,33 +607,43 @@ namespace Downlink
             TheModel.Message("Stop simulation");
             if (TheGroundSystem.Packets.Count<1)
             {
-                Console.WriteLine(@"No packets were received.");
+                Report(@"No packets were received.");
                 return;
             }
-            Console.WriteLine(@"The rover drove {0} meters in {1} seconds", TheRover.Position, Time);
+            Report(@"The rover drove {0} meters in {1} seconds", TheRover.Position, Time);
             var smg = 100f * TheRover.Position / Time;
-            Console.WriteLine(@"SMG = {0} cm/sec", smg.ToString("F3").PadLeft(10));
-            Console.WriteLine();
+            Report(@"SMG = {0} cm/sec", smg.ToString("F3").PadLeft(10));
+            Report();
 
-            Console.WriteLine(@"{0} frames were received", TheGroundSystem.FrameCount.ToString().PadLeft(10));
-            for (var i = 0; i < 4; i++)
-                Console.WriteLine(@"{0} VC{1} frames were received ({2}%)", 
+            Report(@"{0} frames were received", TheGroundSystem.FrameCount.ToString().PadLeft(10));
+            for (var i = 0; i < TheGroundSystem.FrameCounter.Length; i++)
+                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped", 
                     TheGroundSystem.FrameCounter[i].ToString().PadLeft(10),
                     i,
-                    (TheGroundSystem.FrameCounter[i] / (float)TheGroundSystem.FrameCount).ToString("F2").PadLeft(6));
-            Console.WriteLine();
-            Console.WriteLine(@"{0} bytes were received in all frames", TheGroundSystem.TotalBytesReceived.ToString().PadLeft(10));
-            Console.WriteLine(@"{0} bytes were received in all packets", TheGroundSystem.TotalBytesInPackets.ToString().PadLeft(10));
-            Console.WriteLine(@"The bandwidth efficiency was {0}%",
+                    (TheGroundSystem.FrameCounter[i] / (float)TheGroundSystem.FrameCount).ToString("F2").PadLeft(6),
+                    Buffers[i].PacketQueue.DropCount
+                    );
+            Report();
+            Report(@"{0} bytes were received in all frames", TheGroundSystem.TotalBytesReceived.ToString().PadLeft(10));
+            Report(@"{0} bytes were received in all packets", TheGroundSystem.TotalBytesInPackets.ToString().PadLeft(10));
+            Report(@"The bandwidth efficiency was {0}%",
                 (TheGroundSystem.TotalBytesInPackets / (float)TheGroundSystem.TotalBytesReceived).ToString("F2").PadLeft(6));
-            Console.WriteLine();
+            Report();
             PacketReport(TheGroundSystem.Packets, "all APIDs");
-            Console.WriteLine();
-            var maxAPID = (int)APID.DOCImage;
-            for (var i=0;i<=maxAPID;i++)
+            Report();
+            var AllAPIDS = (int)APID.AllAPIDS;
+            for (var i=0;i<=AllAPIDS;i++)
             {
                 PacketReport(TheGroundSystem.Packets.Where(p => p.APID == (APID)i), ((APID)i).ToString());
-                Console.WriteLine();
+                Report();
+            }
+
+            Report(@"Report on packets in flight at time {0}", Time);
+            for (var i=0;i<= AllAPIDS; i++)
+            {
+                int packetCount, byteCount;
+                PacketsInFlight((APID)i, out packetCount, out byteCount);
+                Report("  APID={0} {1} {2}", ((APID)i).ToString().PadRight(20), packetCount.ToString().PadLeft(10), byteCount.ToString().PadLeft(10));
             }
         }
 
@@ -529,10 +653,61 @@ namespace Downlink
             var packetCount = lst.Count;
             var averageLatency = lst.SafeAverage(p => p.Latency);
             var latencyStdDev = lst.StandardDeviation(p => p.Latency);
-            Console.WriteLine(@"Packet Report for {0}", title);
-            Console.WriteLine(@"  {0} packets were received", packetCount);
-            Console.WriteLine(@"  The average latency was {0:F3} sec", averageLatency);
-            Console.WriteLine(@"  The latency standard deviation was {0:F3} sec", latencyStdDev);
+            Report(@"Packet Report for {0}", title);
+            Report(@"  {0} packets were received", packetCount);
+            Report(@"  The average latency was {0:F3} sec", averageLatency);
+            Report(@"  The latency standard deviation was {0:F3} sec", latencyStdDev);
+        }
+
+        private void PacketsInFlight(APID apid, out int packetCount, out int byteCount)
+        {
+            packetCount = 0;
+            byteCount = 0;
+            foreach (var vc in Buffers)
+            {
+                PacketsInFlight(apid, vc.Frame, ref packetCount, ref byteCount);
+                PacketsInFlight(apid, vc.PacketQueue, ref packetCount, ref byteCount);
+            }
+            PacketsInFlight(apid, EventQueue, ref packetCount, ref byteCount);
+        }
+
+        void PacketsInFlight(APID apid, Frame f, ref int packetCount, ref int byteCount)
+        {
+            if (f == null) return;
+            foreach (var pf in f.Fragments)
+            {
+                if (!MatchingAPID(apid, pf.Packet.APID))
+                    continue;
+                if (pf.IsFinal)
+                    packetCount++;
+                byteCount += pf.Length;
+            }
+        }
+
+        void PacketsInFlight(APID apid, PacketQueue q, ref int packetCount, ref int byteCount)
+        {
+            q.PacketsInFlight(apid, ref packetCount, ref byteCount);
+        }
+
+        void PacketsInFlight(APID apid, SimplePriorityQueue<Event, float> q, ref int packetCount, ref int byteCount)
+        {
+            var events = new Stack<Event>();
+            while (q.Count>0)
+            {
+                var e = q.Dequeue();
+                events.Push(e);
+                if (e.Time >= Time)
+                    continue;
+                var fd = e as FrameDelivery;
+                if (fd == null)
+                    continue;
+                PacketsInFlight(apid, fd.Frame, ref packetCount, ref byteCount);
+            }
+            while (events.Count > 0)
+            {
+                var e = events.Pop();
+                q.Enqueue(e, e.Time);
+            }
         }
     }
 
