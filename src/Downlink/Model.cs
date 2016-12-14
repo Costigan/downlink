@@ -338,8 +338,10 @@ namespace Downlink
                             TheModel.TheDriver.EvalImage(packet);
                         if (packet.APID == APID.DOCWaypointImage)
                         {
-                            TheModel.Message("Received DOC Waypoint image");  // Bug: This should be the last of 4, not any DOC Waypoint image
-                            if (TheModel.TheCase == ModelCase.ScienceStation)
+                            var di = packet as DOCImage;
+                            if (di == null) continue;
+                            TheModel.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
+                            if (TheModel.TheCase == ModelCase.ScienceStation && di.SequenceNumber == 3 && di.RoverPosition == TheModel.TheRover.Position)
                             {
                                 TheModel.Message("NIRVSS allows driver to send drive command");
                                 Enqueue(new Thunk(TheModel.Time + UplinkLatency, () => TheModel.TheDriver.SendDriveCommand()));
@@ -399,6 +401,12 @@ namespace Downlink
                     byteCount += a[i].Length;
                 }
             }
+        }
+
+        public class DOCImage : Packet
+        {
+            public float RoverPosition { get; set; }
+            public int SequenceNumber { get; set; }
         }
 
         #endregion Classes
@@ -496,9 +504,9 @@ namespace Downlink
             }
             else
             {
-                if (_DocWaypointImageCount < 9)  // Should be 9 images not 4 -- testing
+                if (_DocWaypointImageCount < 9)
                 {
-                    var p = new Packet { APID = APID.DOCWaypointImage, Length = DOCAllLEDScale3, Timestamp = Time };
+                    var p = new DOCImage { APID = APID.DOCWaypointImage, Length = DOCAllLEDScale3, Timestamp = Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = TheModel.TheRover.Position };
                     VCPacketQueue[_DocWaypointImageCount < 4 ? PayloadHighPriorityImage : PayloadLowPriorityImage].Receive(p);
                     Message(@"  Sending waypoint doc image {0}", _DocWaypointImageCount);
                     _DocWaypointImageCount++;
