@@ -39,13 +39,13 @@ namespace Downlink
         public const float NSSProspectingBitsPerSecond = 800f;
         public const float NIRVSSProspectingBitsPerSecond = 11552f;
         public const float PayloadWithoutDOCBitsPerSecond = AvionicsProspectingBitsPerSecond + VMLProspectingBitsPerSecond + NSSProspectingBitsPerSecond + NIRVSSProspectingBitsPerSecond;
-        public const float DOCProspectingBitsPerSecond = 0f;
+        public const float DOCProspectingBitsPerSecond = 0f; // not used
 
         public const int DOCHighResNarrow = (((2048 * 2048 * 12) / 3) + 112) / 8;
         public const int DOCLowContrastNarrow = ((256 * 256 * 8) / 3 + 112) / 8;
         public const int DOCLowContrastMedium = ((256 * 256 * 8) / 3 + 112) / 8;
         public const int DOCLowContrastFull = ((256 * 256 * 8) / 3 + 112) / 8;  // One every 2 sec
-        public const int DOCSingleLEDScale3 = ((256 * 256 * 12) / 3 + 112)/8;  // one every 2.5 sec
+        public const int DOCSingleLEDScale3 = ((256 * 256 * 12) / 3 + 112) / 8;  // one every 2.5 sec
         public const int DOCAllLEDScale3 = ((256 * 256 * 12) / 3 + 112) / 8;
         public const int DOCAllLEDScale2 = ((512 * 512 * 12) / 3 + 112) / 8;
         public const int DOCAllLEDScale1 = ((2048 * 2048 * 12) / 3 + 112) / 8;
@@ -56,6 +56,8 @@ namespace Downlink
         public bool PrintReport = false;
         public List<string> EventMessages;
         public List<string> ReportMessages;
+
+        public List<Sample> StateSamples = null;
 
         #endregion Global Variables
 
@@ -200,12 +202,24 @@ namespace Downlink
             public override void Execute(Model m) { Receiver.Receive(Frame); }
         }
 
+        public class CaptureState : Event
+        {
+            public float Delay;
+            public SimpleModel Model;
+            public override void Execute(Model m)
+            {
+                var sample = new Sample();
+                sample.Capture(Model);
+                Time += Delay;
+                m.Enqueue(this);
+            }
+        }
+
         #endregion Event Classes
 
         #region Event handlers
 
         #endregion Event handlers
-
 
         #region Classes
 
@@ -356,13 +370,12 @@ namespace Downlink
         {
             public int DropCount = 0;
             public int Size;
-            public int Count = 0;
+            public int Count => Queue.Count + Stack.Count;
             Queue<Packet> Queue = new Queue<Packet>();
             Stack<Packet> Stack = new Stack<Packet>();
             public void Enqueue(Packet p)
             {
                 Receive(p);
-                Count++;
             }
             public void Receive(Packet p)
             {
@@ -374,14 +387,8 @@ namespace Downlink
             public void PushBack(Packet p)
             {
                 Stack.Push(p);
-                Count++;
             }
-            public Packet Dequeue()
-            {
-                var p = Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
-                if (p != null) Count--;
-                return p;
-            }
+            public Packet Dequeue() => Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
             public void PacketsInFlight(APID pattern, ref int packetCount, ref int byteCount)
             {
                 var a = Queue.ToArray();
@@ -463,13 +470,14 @@ namespace Downlink
 
         #endregion Helper Methods
 
-        }
+    }
 
-        public class SimpleModel : Model
+    public class SimpleModel : Model
     {
         List<VirtualChannelBuffer> Buffers;
         public override void Start()
         {
+            StateSamples = new List<Sample>();
             Time = 0f;
             TheRover = new Rover();
             TheDriver = new Driver();
@@ -483,12 +491,14 @@ namespace Downlink
 
             // TO_DRIVE = 46669.9 bits/sec
             StartPacketGenerator(VCPacketQueue[RoverHighPriorityVC], APID.RoverHealth, RoverHealthBitsPerSecond, 100, Time);
-            StartPacketGenerator(VCPacketQueue[PayloadHighPriority], APID.PayloadGeneral, PayloadWithoutDOCBitsPerSecond, 100, Time+0.1f);
+            StartPacketGenerator(VCPacketQueue[PayloadHighPriority], APID.PayloadGeneral, PayloadWithoutDOCBitsPerSecond, 100, Time + 0.1f);
             Enqueue(new Thunk(Time, () => ModelDocGeneration()));
 
             Enqueue(new FrameEngine { Time = Time, Delay = FrameTime });
             if (TheCase == ModelCase.Rails)
                 Enqueue(new Thunk(Time, () => TheDriver.SendDriveCommand()));
+
+            Enqueue(new CaptureState { Model = this, Delay = 1f });
         }
 
         // Runs at 1 Hz
@@ -584,7 +594,7 @@ namespace Downlink
                     }
                     else
                     {
-                        var frag1 = new PacketFragment { Packet = f.Packet, Length = frame.Capacity, FragmentNumber = f.TotalFragments, TotalFragments = f.TotalFragments+1 };
+                        var frag1 = new PacketFragment { Packet = f.Packet, Length = frame.Capacity, FragmentNumber = f.TotalFragments, TotalFragments = f.TotalFragments + 1 };
                         frame.Add(frag1);
                         f.FragmentNumber = ++f.TotalFragments;
                         f.Length -= frag1.Length;
@@ -613,7 +623,7 @@ namespace Downlink
         public override void Stop()
         {
             TheModel.Message("Stop simulation");
-            if (TheGroundSystem.Packets.Count<1)
+            if (TheGroundSystem.Packets.Count < 1)
             {
                 Report(@"No packets were received.");
                 return;
@@ -625,7 +635,7 @@ namespace Downlink
 
             Report(@"{0} frames were received", TheGroundSystem.FrameCount.ToString().PadLeft(10));
             for (var i = 0; i < TheGroundSystem.FrameCounter.Length; i++)
-                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped", 
+                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped",
                     TheGroundSystem.FrameCounter[i].ToString().PadLeft(10),
                     i,
                     (TheGroundSystem.FrameCounter[i] / (float)TheGroundSystem.FrameCount).ToString("F2").PadLeft(6),
@@ -640,14 +650,14 @@ namespace Downlink
             PacketReport(TheGroundSystem.Packets, "all APIDs");
             Report();
             var AllAPIDS = (int)APID.AllAPIDS;
-            for (var i=0;i<=AllAPIDS;i++)
+            for (var i = 0; i <= AllAPIDS; i++)
             {
                 PacketReport(TheGroundSystem.Packets.Where(p => p.APID == (APID)i), ((APID)i).ToString());
                 Report();
             }
 
             Report(@"Report on packets in flight at time {0}", Time);
-            for (var i=0;i<= AllAPIDS; i++)
+            for (var i = 0; i <= AllAPIDS; i++)
             {
                 int packetCount, byteCount;
                 PacketsInFlight((APID)i, out packetCount, out byteCount);
@@ -661,9 +671,11 @@ namespace Downlink
             var packetCount = lst.Count;
             var averageLatency = lst.SafeAverage(p => p.Latency);
             var latencyStdDev = lst.StandardDeviation(p => p.Latency);
+            var min = lst.SafeMin(p => p.Latency);
+            var max = lst.SafeMax(p => p.Latency);
             Report(@"Packet Report for {0}", title);
             Report(@"  {0} packets were received", packetCount);
-            Report(@"  The average latency was {0:F3} sec", averageLatency);
+            Report(@"  min,max,avg latency = [{0:F3}, {1:F3}, {2:F3}] sec", min, max, averageLatency);
             Report(@"  The latency standard deviation was {0:F3} sec", latencyStdDev);
         }
 
@@ -700,7 +712,7 @@ namespace Downlink
         void PacketsInFlight(APID apid, SimplePriorityQueue<Event, float> q, ref int packetCount, ref int byteCount)
         {
             var events = new Stack<Event>();
-            while (q.Count>0)
+            while (q.Count > 0)
             {
                 var e = q.Dequeue();
                 events.Push(e);
@@ -719,4 +731,18 @@ namespace Downlink
         }
     }
 
+    public class Sample
+    {
+        public float Time;
+        public int[] QueueLength { get; set; }
+        public int[] Drops { get; set; }
+
+        public void Capture(SimpleModel model)
+        {
+            Time = model.Time;
+            QueueLength = model.VCPacketQueue.Select(q => q.Count).ToArray();
+            Drops = model.VCPacketQueue.Select(q => q.DropCount).ToArray();
+            model.StateSamples.Add(this);
+        }
+    }
 }

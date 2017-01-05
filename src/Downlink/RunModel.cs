@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
+using ZedGraph;
 
 namespace Downlink
 {
@@ -47,6 +49,87 @@ namespace Downlink
                     sw.WriteLine(line);
             }
             txtReport.Text = sb.ToString();
+        }
+
+        private void RunModel_Load(object sender, EventArgs e)
+        {
+            lbPlots.Items.AddRange(
+                new PlotAction[]
+                {
+                new PlotAction { Name = "Plot VC queue lengths", Action = () => PlotVCQueueLengths() },
+                new PlotAction { Name = "Plot VC queue drops", Action = () => PlotVCQueueDrops() },
+                new PlotAction { Name = "Clear Graph", Action = () => zed1.GraphPane.CurveList.Clear() }
+                });
+        }
+
+        protected Color[] Colors = new Color[]
+        {
+            Color.Black,Color.DarkRed,Color.Red,Color.Green,Color.Blue
+        };
+
+        private void PlotVCQueueLengths()
+        {
+            var m = Model.TheModel;
+            zed1.GraphPane.CurveList.Clear();
+            var states = m.StateSamples;
+            if (states.Count < 1) return;
+            var max = states[0].QueueLength.Length;
+            for (var vc = 0;vc<max;vc++)
+            {
+                var points = new PointPairList();
+                foreach (var s in states)
+                    points.Add(s.Time, s.QueueLength[vc]);
+                zed1.GraphPane.AddCurve("VC" + vc, points, HSLColor.FetchCachedHue(vc, max), SymbolType.None);
+            }
+
+            zed1.GraphPane.Title.Text = "VC Queue Lengths";
+            zed1.GraphPane.XAxis.Title.Text = "Time (sec)";
+            zed1.GraphPane.YAxis.Title.Text = "Queue Length";
+
+            zed1.ZoomOutAll(zed1.GraphPane);
+            zed1.GraphPane.AxisChange();
+            zed1.Invalidate();
+        }
+
+        private void PlotVCQueueDrops()
+        {
+            var m = Model.TheModel;
+            zed1.GraphPane.CurveList.Clear();
+            var states = m.StateSamples;
+            if (states.Count < 1) return;
+            var max = states[0].Drops.Length;
+            for (var vc = 0; vc < max; vc++)
+            {
+                var points = new PointPairList();
+                foreach (var s in states)
+                    points.Add(s.Time, s.Drops[vc]);
+                zed1.GraphPane.AddCurve("VC" + vc, points, HSLColor.FetchCachedHue(vc, max), SymbolType.None);
+            }
+
+            zed1.GraphPane.Title.Text = "VC Queue Drops since last sample";
+            zed1.GraphPane.XAxis.Title.Text = "Time (sec)";
+            zed1.GraphPane.YAxis.Title.Text = "Drops";
+
+            zed1.ZoomOutAll(zed1.GraphPane);
+            zed1.GraphPane.AxisChange();
+            zed1.Invalidate();
+        }
+
+        private void lbPlots_SelectedValueChanged(object sender, EventArgs e)
+        {
+            var s = lbPlots.SelectedItem as PlotAction;
+            if (s == null) return;
+            s.Action();
+        }
+    }
+
+    internal class PlotAction
+    {
+        public string Name = String.Empty;
+        public Action Action;
+        public override string ToString()
+        {
+            return Name;
         }
     }
 }

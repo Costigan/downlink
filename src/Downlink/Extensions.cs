@@ -102,5 +102,51 @@ namespace Downlink
             if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).SafeAverage();
         }
+
+        public static double SafeMin(this IEnumerable<double> source)
+        {
+            double min = double.MaxValue;
+            long n = 0;
+            checked
+            {
+                foreach (double x in source)
+                {
+                    n++;
+                    if (x < min)
+                        min = x;
+                }
+            }
+            return n == 0 ? double.NaN : min;
+        }
+
+        public static double SafeMin<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
+        {
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
+            return source.Select(selector).SafeMin();
+        }
+
+        public static double SafeMax(this IEnumerable<double> source)
+        {
+            double max = double.MinValue;
+            long n = 0;
+            checked
+            {
+                foreach (double x in source)
+                {
+                    n++;
+                    if (x > max)
+                        max = x;
+                }
+            }
+            return n == 0 ? double.NaN : max;
+        }
+
+        public static double SafeMax<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
+        {
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
+            return source.Select(selector).SafeMax();
+        }
     }
 }

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.btnRun = new System.Windows.Forms.Button();
             this.txtEvents = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -39,6 +40,12 @@
             this.rbScienceStation = new System.Windows.Forms.RadioButton();
             this.rbRails = new System.Windows.Forms.RadioButton();
             this.cbPrintMessages = new System.Windows.Forms.CheckBox();
+            this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.tabReports = new System.Windows.Forms.TabPage();
+            this.tabPlots = new System.Windows.Forms.TabPage();
+            this.splitContainer2 = new System.Windows.Forms.SplitContainer();
+            this.lbPlots = new System.Windows.Forms.ListBox();
+            this.zed1 = new ZedGraph.ZedGraphControl();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -47,6 +54,13 @@
             this.splitContainer1.SuspendLayout();
             this.panel1.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            this.tabControl1.SuspendLayout();
+            this.tabReports.SuspendLayout();
+            this.tabPlots.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
+            this.splitContainer2.Panel1.SuspendLayout();
+            this.splitContainer2.Panel2.SuspendLayout();
+            this.splitContainer2.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnRun
@@ -67,7 +81,7 @@
             this.txtEvents.Multiline = true;
             this.txtEvents.Name = "txtEvents";
             this.txtEvents.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtEvents.Size = new System.Drawing.Size(428, 484);
+            this.txtEvents.Size = new System.Drawing.Size(677, 616);
             this.txtEvents.TabIndex = 1;
             // 
             // groupBox1
@@ -76,7 +90,7 @@
             this.groupBox1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBox1.Location = new System.Drawing.Point(0, 0);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(434, 503);
+            this.groupBox1.Size = new System.Drawing.Size(683, 635);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Events";
@@ -87,7 +101,7 @@
             this.groupBox2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBox2.Location = new System.Drawing.Point(0, 0);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(218, 503);
+            this.groupBox2.Size = new System.Drawing.Size(341, 635);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Report";
@@ -100,13 +114,13 @@
             this.txtReport.Multiline = true;
             this.txtReport.Name = "txtReport";
             this.txtReport.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtReport.Size = new System.Drawing.Size(212, 484);
+            this.txtReport.Size = new System.Drawing.Size(335, 616);
             this.txtReport.TabIndex = 0;
             // 
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(134, 0);
+            this.splitContainer1.Location = new System.Drawing.Point(3, 3);
             this.splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -116,8 +130,8 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.groupBox1);
-            this.splitContainer1.Size = new System.Drawing.Size(656, 503);
-            this.splitContainer1.SplitterDistance = 218;
+            this.splitContainer1.Size = new System.Drawing.Size(1028, 635);
+            this.splitContainer1.SplitterDistance = 341;
             this.splitContainer1.TabIndex = 4;
             // 
             // panel1
@@ -128,7 +142,7 @@
             this.panel1.Dock = System.Windows.Forms.DockStyle.Left;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(134, 503);
+            this.panel1.Size = new System.Drawing.Size(134, 667);
             this.panel1.TabIndex = 5;
             // 
             // groupBox3
@@ -174,15 +188,92 @@
             this.cbPrintMessages.Text = "Print Messages";
             this.cbPrintMessages.UseVisualStyleBackColor = true;
             // 
+            // tabControl1
+            // 
+            this.tabControl1.Controls.Add(this.tabReports);
+            this.tabControl1.Controls.Add(this.tabPlots);
+            this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControl1.Location = new System.Drawing.Point(134, 0);
+            this.tabControl1.Name = "tabControl1";
+            this.tabControl1.SelectedIndex = 0;
+            this.tabControl1.Size = new System.Drawing.Size(1042, 667);
+            this.tabControl1.TabIndex = 6;
+            // 
+            // tabReports
+            // 
+            this.tabReports.Controls.Add(this.splitContainer1);
+            this.tabReports.Location = new System.Drawing.Point(4, 22);
+            this.tabReports.Name = "tabReports";
+            this.tabReports.Padding = new System.Windows.Forms.Padding(3);
+            this.tabReports.Size = new System.Drawing.Size(1034, 641);
+            this.tabReports.TabIndex = 0;
+            this.tabReports.Text = "Reports";
+            this.tabReports.UseVisualStyleBackColor = true;
+            // 
+            // tabPlots
+            // 
+            this.tabPlots.Controls.Add(this.splitContainer2);
+            this.tabPlots.Location = new System.Drawing.Point(4, 22);
+            this.tabPlots.Name = "tabPlots";
+            this.tabPlots.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPlots.Size = new System.Drawing.Size(1034, 641);
+            this.tabPlots.TabIndex = 1;
+            this.tabPlots.Text = "Plots";
+            this.tabPlots.UseVisualStyleBackColor = true;
+            // 
+            // splitContainer2
+            // 
+            this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer2.Location = new System.Drawing.Point(3, 3);
+            this.splitContainer2.Name = "splitContainer2";
+            // 
+            // splitContainer2.Panel1
+            // 
+            this.splitContainer2.Panel1.Controls.Add(this.lbPlots);
+            // 
+            // splitContainer2.Panel2
+            // 
+            this.splitContainer2.Panel2.Controls.Add(this.zed1);
+            this.splitContainer2.Size = new System.Drawing.Size(1028, 635);
+            this.splitContainer2.SplitterDistance = 100;
+            this.splitContainer2.TabIndex = 0;
+            // 
+            // lbPlots
+            // 
+            this.lbPlots.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lbPlots.FormattingEnabled = true;
+            this.lbPlots.Location = new System.Drawing.Point(0, 0);
+            this.lbPlots.Name = "lbPlots";
+            this.lbPlots.Size = new System.Drawing.Size(100, 635);
+            this.lbPlots.TabIndex = 0;
+            this.lbPlots.SelectedValueChanged += new System.EventHandler(this.lbPlots_SelectedValueChanged);
+            // 
+            // zed1
+            // 
+            this.zed1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.zed1.Location = new System.Drawing.Point(0, 0);
+            this.zed1.Name = "zed1";
+            this.zed1.ScrollGrace = 0D;
+            this.zed1.ScrollMaxX = 0D;
+            this.zed1.ScrollMaxY = 0D;
+            this.zed1.ScrollMaxY2 = 0D;
+            this.zed1.ScrollMinX = 0D;
+            this.zed1.ScrollMinY = 0D;
+            this.zed1.ScrollMinY2 = 0D;
+            this.zed1.Size = new System.Drawing.Size(924, 635);
+            this.zed1.TabIndex = 0;
+            this.zed1.UseExtendedPrintDialog = true;
+            // 
             // RunModel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(790, 503);
-            this.Controls.Add(this.splitContainer1);
+            this.ClientSize = new System.Drawing.Size(1176, 667);
+            this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.panel1);
             this.Name = "RunModel";
             this.Text = "Downlink Model";
+            this.Load += new System.EventHandler(this.RunModel_Load);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
@@ -195,6 +286,13 @@
             this.panel1.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            this.tabControl1.ResumeLayout(false);
+            this.tabReports.ResumeLayout(false);
+            this.tabPlots.ResumeLayout(false);
+            this.splitContainer2.Panel1.ResumeLayout(false);
+            this.splitContainer2.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
+            this.splitContainer2.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -212,6 +310,12 @@
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.RadioButton rbScienceStation;
         private System.Windows.Forms.RadioButton rbRails;
+        private System.Windows.Forms.TabControl tabControl1;
+        private System.Windows.Forms.TabPage tabReports;
+        private System.Windows.Forms.TabPage tabPlots;
+        private System.Windows.Forms.SplitContainer splitContainer2;
+        private System.Windows.Forms.ListBox lbPlots;
+        private ZedGraph.ZedGraphControl zed1;
     }
 }
 
