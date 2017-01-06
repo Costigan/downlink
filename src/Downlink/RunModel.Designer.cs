@@ -46,6 +46,11 @@
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.lbPlots = new System.Windows.Forms.ListBox();
             this.zed1 = new ZedGraph.ZedGraphControl();
+            this.tabOther = new System.Windows.Forms.TabPage();
+            this.zed2 = new ZedGraph.ZedGraphControl();
+            this.splitter1 = new System.Windows.Forms.Splitter();
+            this.panel2 = new System.Windows.Forms.Panel();
+            this.btnRateVsDrops = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -61,6 +66,8 @@
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
             this.splitContainer2.SuspendLayout();
+            this.tabOther.SuspendLayout();
+            this.panel2.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnRun
@@ -192,6 +199,7 @@
             // 
             this.tabControl1.Controls.Add(this.tabReports);
             this.tabControl1.Controls.Add(this.tabPlots);
+            this.tabControl1.Controls.Add(this.tabOther);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(134, 0);
             this.tabControl1.Name = "tabControl1";
@@ -264,6 +272,61 @@
             this.zed1.TabIndex = 0;
             this.zed1.UseExtendedPrintDialog = true;
             // 
+            // tabOther
+            // 
+            this.tabOther.Controls.Add(this.zed2);
+            this.tabOther.Controls.Add(this.splitter1);
+            this.tabOther.Controls.Add(this.panel2);
+            this.tabOther.Location = new System.Drawing.Point(4, 22);
+            this.tabOther.Name = "tabOther";
+            this.tabOther.Size = new System.Drawing.Size(1034, 641);
+            this.tabOther.TabIndex = 2;
+            this.tabOther.Text = "Other Calculations";
+            this.tabOther.UseVisualStyleBackColor = true;
+            // 
+            // zed2
+            // 
+            this.zed2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.zed2.Location = new System.Drawing.Point(137, 0);
+            this.zed2.Name = "zed2";
+            this.zed2.ScrollGrace = 0D;
+            this.zed2.ScrollMaxX = 0D;
+            this.zed2.ScrollMaxY = 0D;
+            this.zed2.ScrollMaxY2 = 0D;
+            this.zed2.ScrollMinX = 0D;
+            this.zed2.ScrollMinY = 0D;
+            this.zed2.ScrollMinY2 = 0D;
+            this.zed2.Size = new System.Drawing.Size(897, 641);
+            this.zed2.TabIndex = 1;
+            this.zed2.UseExtendedPrintDialog = true;
+            // 
+            // splitter1
+            // 
+            this.splitter1.Location = new System.Drawing.Point(134, 0);
+            this.splitter1.Name = "splitter1";
+            this.splitter1.Size = new System.Drawing.Size(3, 641);
+            this.splitter1.TabIndex = 3;
+            this.splitter1.TabStop = false;
+            // 
+            // panel2
+            // 
+            this.panel2.Controls.Add(this.btnRateVsDrops);
+            this.panel2.Dock = System.Windows.Forms.DockStyle.Left;
+            this.panel2.Location = new System.Drawing.Point(0, 0);
+            this.panel2.Name = "panel2";
+            this.panel2.Size = new System.Drawing.Size(134, 641);
+            this.panel2.TabIndex = 2;
+            // 
+            // btnRateVsDrops
+            // 
+            this.btnRateVsDrops.Location = new System.Drawing.Point(3, 15);
+            this.btnRateVsDrops.Name = "btnRateVsDrops";
+            this.btnRateVsDrops.Size = new System.Drawing.Size(105, 23);
+            this.btnRateVsDrops.TabIndex = 0;
+            this.btnRateVsDrops.Text = "btnRateVsDrops";
+            this.btnRateVsDrops.UseVisualStyleBackColor = true;
+            this.btnRateVsDrops.Click += new System.EventHandler(this.btnRateVsDrops_Click);
+            // 
             // RunModel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -293,6 +356,8 @@
             this.splitContainer2.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
+            this.tabOther.ResumeLayout(false);
+            this.panel2.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -316,6 +381,11 @@
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.ListBox lbPlots;
         private ZedGraph.ZedGraphControl zed1;
+        private System.Windows.Forms.TabPage tabOther;
+        private ZedGraph.ZedGraphControl zed2;
+        private System.Windows.Forms.Splitter splitter1;
+        private System.Windows.Forms.Panel panel2;
+        private System.Windows.Forms.Button btnRateVsDrops;
     }
 }
 

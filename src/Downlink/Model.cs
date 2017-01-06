@@ -14,21 +14,28 @@ namespace Downlink
         public static float DriveStep = 4.5f;
         public static float DriveSpeed = 0.01f;
         public static float UplinkLatency = 10f + 1.3f;
-        public static float DownlinkLatency = 10f + 1.3f + FrameLatency;
+        public float DownlinkLatency;
 
-        public static float FrameLatency = FrameLength * 8 / DownlinkRate;
+        public static float FrameLatency;
         public static float GDSLatency = 0f;  // for now
 
         public static float DriverDecisionTime = 90f;
 
-        public const float RoverDownlinkRate = 60000f; // bits/sec
-        public const float PayloadDownlinkRate = 40000f; // bits/sec
-        public const float DownlinkRate = RoverDownlinkRate + PayloadDownlinkRate;
+        private float _DownlinkRate = 100000f;
+        public float DownlinkRate
+        {
+            get { return _DownlinkRate; }
+            set
+            {
+                _DownlinkRate = value;
+                FrameLatency = FrameLength * 8 / _DownlinkRate;
+                FrameTime = FrameLength * 8f / _DownlinkRate;
+                DownlinkLatency = 10f + 1.3f + FrameLatency;
+            }
+        }
 
         public const int FrameLength = 1113; // bytes
-        public const float RoverFrameTime = FrameLength * 8 / RoverDownlinkRate;
-        public const float PayloadFrameTime = FrameLength * 8 / PayloadDownlinkRate;
-        public const float FrameTime = FrameLength * 8f / DownlinkRate;
+        public static float FrameTime;  // watch out!  This is shared.
         public const int FrameCapacity = FrameLength - 6;  // frame header and footer
 
         public const float RoverHealthBitsPerSecond = 46669.9f;
@@ -88,6 +95,11 @@ namespace Downlink
         #endregion Model State Variables
 
         public enum APID { IdlePacket, RoverHealth, RoverImagePair, PayloadGeneral, DOCProspectingImage, DOCWaypointImage, AllAPIDS }
+
+        public Model()
+        {
+            DownlinkRate = _DownlinkRate;  // initialize
+        }
 
         public static void Enqueue(Thunk t)
         {
@@ -369,8 +381,10 @@ namespace Downlink
         public class PacketQueue : PacketReceiver
         {
             public int DropCount = 0;
+            public int ByteDropCount = 0;
             public int Size;
             public int Count => Queue.Count + Stack.Count;
+            public int ByteCount;
             Queue<Packet> Queue = new Queue<Packet>();
             Stack<Packet> Stack = new Stack<Packet>();
             public void Enqueue(Packet p)
@@ -380,15 +394,27 @@ namespace Downlink
             public void Receive(Packet p)
             {
                 if (Size > Queue.Count)
+                {
                     Queue.Enqueue(p);
+                    ByteCount += p.Length;
+                }
                 else
+                {
                     DropCount++;
+                    ByteDropCount += p.Length;
+                }
             }
             public void PushBack(Packet p)
             {
                 Stack.Push(p);
+                ByteCount += p.Length;
             }
-            public Packet Dequeue() => Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
+            public Packet Dequeue()
+            {
+                var p = Stack.Count > 0 ? Stack.Pop() : Queue.Count > 0 ? Queue.Dequeue() : null;
+                if (p != null) ByteCount -= p.Length;
+                return p;
+            }
             public void PacketsInFlight(APID pattern, ref int packetCount, ref int byteCount)
             {
                 var a = Queue.ToArray();
@@ -469,12 +495,13 @@ namespace Downlink
         public static bool MatchingAPID(APID pattern, APID concrete) => pattern == APID.AllAPIDS || pattern == concrete;
 
         #endregion Helper Methods
-
     }
 
     public class SimpleModel : Model
     {
+        public bool CaptureStates = true;
         List<VirtualChannelBuffer> Buffers;
+
         public override void Start()
         {
             StateSamples = new List<Sample>();
@@ -498,7 +525,8 @@ namespace Downlink
             if (TheCase == ModelCase.Rails)
                 Enqueue(new Thunk(Time, () => TheDriver.SendDriveCommand()));
 
-            Enqueue(new CaptureState { Model = this, Delay = 1f });
+            if (CaptureStates)
+                Enqueue(new CaptureState { Model = this, Delay = 1f });
         }
 
         // Runs at 1 Hz
@@ -517,8 +545,9 @@ namespace Downlink
                 if (_DocWaypointImageCount < 9)
                 {
                     var p = new DOCImage { APID = APID.DOCWaypointImage, Length = DOCAllLEDScale3, Timestamp = Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = TheModel.TheRover.Position };
-                    VCPacketQueue[_DocWaypointImageCount < 4 ? PayloadHighPriorityImage : PayloadLowPriorityImage].Receive(p);
-                    Message(@"  Sending waypoint doc image {0}", _DocWaypointImageCount);
+                    var vc = _DocWaypointImageCount < 4 ? PayloadHighPriorityImage : PayloadLowPriorityImage;
+                    VCPacketQueue[vc].Receive(p);
+                    Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
                     _DocWaypointImageCount++;
                 }
             }
@@ -635,11 +664,12 @@ namespace Downlink
 
             Report(@"{0} frames were received", TheGroundSystem.FrameCount.ToString().PadLeft(10));
             for (var i = 0; i < TheGroundSystem.FrameCounter.Length; i++)
-                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped",
+                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped ({4} bytes)",
                     TheGroundSystem.FrameCounter[i].ToString().PadLeft(10),
                     i,
                     (TheGroundSystem.FrameCounter[i] / (float)TheGroundSystem.FrameCount).ToString("F2").PadLeft(6),
-                    Buffers[i].PacketQueue.DropCount
+                    Buffers[i].PacketQueue.DropCount,
+                    Buffers[i].PacketQueue.ByteDropCount
                     );
             Report();
             Report(@"{0} bytes were received in all frames", TheGroundSystem.TotalBytesReceived.ToString().PadLeft(10));
@@ -735,6 +765,7 @@ namespace Downlink
     {
         public float Time;
         public int[] QueueLength { get; set; }
+        public int[] QueueByteCount { get; set; }
         public int[] Drops { get; set; }
 
         public void Capture(SimpleModel model)
@@ -742,6 +773,7 @@ namespace Downlink
             Time = model.Time;
             QueueLength = model.VCPacketQueue.Select(q => q.Count).ToArray();
             Drops = model.VCPacketQueue.Select(q => q.DropCount).ToArray();
+            QueueByteCount = model.VCPacketQueue.Select(q => q.ByteCount).ToArray();
             model.StateSamples.Add(this);
         }
     }

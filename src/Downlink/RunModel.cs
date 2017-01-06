@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using ZedGraph;
@@ -57,6 +58,7 @@ namespace Downlink
                 new PlotAction[]
                 {
                 new PlotAction { Name = "Plot VC queue lengths", Action = () => PlotVCQueueLengths() },
+                new PlotAction { Name = "Plot VC queue byte counts", Action = () => PlotVCQueueByteCounts() },
                 new PlotAction { Name = "Plot VC queue drops", Action = () => PlotVCQueueDrops() },
                 new PlotAction { Name = "Clear Graph", Action = () => zed1.GraphPane.CurveList.Clear() }
                 });
@@ -79,6 +81,30 @@ namespace Downlink
                 var points = new PointPairList();
                 foreach (var s in states)
                     points.Add(s.Time, s.QueueLength[vc]);
+                zed1.GraphPane.AddCurve("VC" + vc, points, HSLColor.FetchCachedHue(vc, max), SymbolType.None);
+            }
+
+            zed1.GraphPane.Title.Text = "VC Queue Lengths";
+            zed1.GraphPane.XAxis.Title.Text = "Time (sec)";
+            zed1.GraphPane.YAxis.Title.Text = "Queue Length";
+
+            zed1.ZoomOutAll(zed1.GraphPane);
+            zed1.GraphPane.AxisChange();
+            zed1.Invalidate();
+        }
+
+        private void PlotVCQueueByteCounts()
+        {
+            var m = Model.TheModel;
+            zed1.GraphPane.CurveList.Clear();
+            var states = m.StateSamples;
+            if (states.Count < 1) return;
+            var max = states[0].QueueLength.Length;
+            for (var vc = 0; vc < max; vc++)
+            {
+                var points = new PointPairList();
+                foreach (var s in states)
+                    points.Add(s.Time, s.QueueByteCount[vc]);
                 zed1.GraphPane.AddCurve("VC" + vc, points, HSLColor.FetchCachedHue(vc, max), SymbolType.None);
             }
 
@@ -120,6 +146,37 @@ namespace Downlink
             var s = lbPlots.SelectedItem as PlotAction;
             if (s == null) return;
             s.Action();
+        }
+
+        private void btnRateVsDrops_Click(object sender, EventArgs e)
+        {
+            var m = new SimpleModel { PrintMessages = false, PrintReport = false };
+            m.Start();
+            zed2.GraphPane.CurveList.Clear();
+            var max = m.VCPacketQueue.Length;
+            var points = m.VCPacketQueue.Select(q => new PointPairList()).ToArray();
+
+            for (var downlink_rate = 100000f; downlink_rate <= 200000f; downlink_rate += 10000f)
+            {
+                Console.Write(downlink_rate);
+                var model = new SimpleModel { PrintMessages = false, PrintReport = false, DownlinkRate = downlink_rate };
+                model.Run();
+
+                for (var i = 0; i < max; i++)
+                    points[i].Add(downlink_rate, model.VCPacketQueue[i].ByteDropCount);
+                Console.WriteLine();
+            }
+
+            for (var i = 0; i < max; i++)
+                zed2.GraphPane.AddCurve("VC" + i, points[i], HSLColor.FetchCachedHue(i, max));
+
+            zed2.GraphPane.Title.Text = "Downlink rate vs drop byte count by VC";
+            zed2.GraphPane.XAxis.Title.Text = "Downlink rate (bits/sec)";
+            zed2.GraphPane.YAxis.Title.Text = "Dropped (bytes)";
+
+            zed2.ZoomOutAll(zed2.GraphPane);
+            zed2.GraphPane.AxisChange();
+            zed2.Invalidate();
         }
     }
 
