@@ -170,13 +170,13 @@
             this.rbScienceStation.Name = "rbScienceStation";
             this.rbScienceStation.Size = new System.Drawing.Size(100, 17);
             this.rbScienceStation.TabIndex = 0;
-            this.rbScienceStation.TabStop = true;
             this.rbScienceStation.Text = "Science Station";
             this.rbScienceStation.UseVisualStyleBackColor = true;
             // 
             // rbRails
             // 
             this.rbRails.AutoSize = true;
+            this.rbRails.Checked = true;
             this.rbRails.Location = new System.Drawing.Point(14, 18);
             this.rbRails.Name = "rbRails";
             this.rbRails.Size = new System.Drawing.Size(48, 17);

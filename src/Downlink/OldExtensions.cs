@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Downlink
+namespace OldDownlink
 {
     public static class Extensions
     {
@@ -17,7 +17,7 @@ namespace Downlink
         /// </returns>
         public static double Variance(this IEnumerable<double> source)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (source == null) throw new ArgumentNullException("source");
             long n = 0;
             double mean = 0;
             double M2 = 0;
@@ -32,7 +32,7 @@ namespace Downlink
                     M2 += delta * (x - mean);
                 }
             }
-            return (n < 2) ?  0d: M2 / (n - 1);
+            return (n < 2) ? 0d : M2 / (n - 1);
         }
 
         /// <summary>
@@ -47,8 +47,8 @@ namespace Downlink
         /// </returns>
         public static double Variance<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).Variance();
         }
 
@@ -76,8 +76,8 @@ namespace Downlink
         /// </returns>
         public static double StandardDeviation<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).StandardDeviation();
         }
 
@@ -98,8 +98,8 @@ namespace Downlink
 
         public static double SafeAverage<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).SafeAverage();
         }
 
@@ -121,8 +121,8 @@ namespace Downlink
 
         public static double SafeMin<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).SafeMin();
         }
 
@@ -144,8 +144,8 @@ namespace Downlink
 
         public static double SafeMax<TSource>(this IEnumerable<TSource> source, Func<TSource, double> selector)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            if (source == null) throw new ArgumentNullException("source");
+            if (selector == null) throw new ArgumentNullException("selector");
             return source.Select(selector).SafeMax();
         }
     }

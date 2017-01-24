@@ -17,7 +17,8 @@ namespace Downlink
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var model = new SimpleModel { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
+            //Model model = new SingleMultiplexor { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
+            var model = new OldDownlink.SimpleModel { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
             model.Run();
 
             if (!cbPrintMessages.Checked)
@@ -150,20 +151,20 @@ namespace Downlink
 
         private void btnRateVsDrops_Click(object sender, EventArgs e)
         {
-            var m = new SimpleModel { PrintMessages = false, PrintReport = false };
+            var m = new SingleMultiplexor { PrintMessages = false, PrintReport = false };
             m.Start();
             zed2.GraphPane.CurveList.Clear();
-            var max = m.VCPacketQueue.Length;
-            var points = m.VCPacketQueue.Select(q => new PointPairList()).ToArray();
+            var max = m.FrameGenerator.Buffers.Count;
+            var points = m.FrameGenerator.Buffers.Select(q => new PointPairList()).ToArray();
 
             for (var downlink_rate = 100000f; downlink_rate <= 200000f; downlink_rate += 10000f)
             {
                 Console.Write(downlink_rate);
-                var model = new SimpleModel { PrintMessages = false, PrintReport = false, DownlinkRate = downlink_rate };
+                var model = new SingleMultiplexor { PrintMessages = false, PrintReport = false, DownlinkRate = downlink_rate };
                 model.Run();
 
                 for (var i = 0; i < max; i++)
-                    points[i].Add(downlink_rate, model.VCPacketQueue[i].ByteDropCount);
+                    points[i].Add(downlink_rate, model.FrameGenerator.Buffers[i].PacketQueue.ByteDropCount);
                 Console.WriteLine();
             }
 
