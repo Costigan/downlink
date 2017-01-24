@@ -7,3 +7,9 @@
   * Image capture rates
   Document them
 
+* Scenarios to evaluate
+  * vary downlink rate
+  * vary image generation rates and sizes
+  * vary filter table by mode
+
+  * Vary packet flow

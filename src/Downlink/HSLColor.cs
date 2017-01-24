@@ -5,15 +5,15 @@ namespace Downlink
 {
     public class HSLColor
     {
-        static ColorWrapper[] ColorCache = new ColorWrapper[240];
+        private static ColorWrapper[] ColorCache = new ColorWrapper[240];
 
         // Private data members below are on scale 0-1
         // They are scaled for use externally based on scale
-        double hue = 1.0;
-        double saturation = 1.0;
-        double luminosity = 1.0;
+        private double hue = 1.0;
+        private double saturation = 1.0;
+        private double luminosity = 1.0;
 
-        const double scale = 240.0;
+        private const double scale = 240.0;
 
         public double Hue
         {
