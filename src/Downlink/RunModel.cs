@@ -17,8 +17,8 @@ namespace Downlink
 
         private void button1_Click(object sender, EventArgs e)
         {
-            //Model model = new SingleMultiplexor { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
-            var model = new OldDownlink.SimpleModel { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
+            Model model = new SingleMultiplexor { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
+            //var model = new OldDownlink.SimpleModel { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
             model.Run();
 
             if (!cbPrintMessages.Checked)

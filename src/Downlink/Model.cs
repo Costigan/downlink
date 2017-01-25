@@ -41,28 +41,43 @@ namespace Downlink
         public static float FrameTime;  // watch out!  This is shared.
 
         // Input variables (expected to change)
-        public int PacketQueueSize = 100;
+        public int PacketQueueSize = 1000;
         public float RoverHealthBitsPerSecond = 30000f;  // was TO_DRIVE 46669.9f, updated per Howard estimate
 
         public const int NavPayload = (int)(2097152f * 12f / 2f / 4f / 8f); // two images
 
-        public const float AvionicsProspectingBitsPerSecond = 1491f;
-        public const float VMLProspectingBitsPerSecond = 735.3f;
-        public const float NSSProspectingBitsPerSecond = 800f;
+        public const float AvionicsLowDataRate = 1491f;
+        public const float AvionicsNominalDataRate = 2485f;
+        public const float AvionicsHighDataRate = 7456f;
+        public const float AvionicsProspectingBitsPerSecond = AvionicsLowDataRate;
+
+        public const float VMLLowDataRate = 735.3f;
+        public const float VMLNominalDataRate = 2329.2f;
+        public const float VMLProspectingBitsPerSecond = VMLLowDataRate;
+
+        public const float NSSLowDataRate = 190f;
+        public const float NSSNominalDataRate = 760f;
+        public const float NSSHighDataRate = 800f;
+        public const float NSSProspectingBitsPerSecond = NSSHighDataRate;
+
         public const float NIRVSSProspectingBitsPerSecond = 11552f;
+
         public const float PayloadWithoutDOCBitsPerSecond = AvionicsProspectingBitsPerSecond + VMLProspectingBitsPerSecond + NSSProspectingBitsPerSecond + NIRVSSProspectingBitsPerSecond;
-        public const float DOCProspectingBitsPerSecond = 0f; // not used
 
-        public const int DOCHighResNarrow = (((2048 * 2048 * 12) / 3) + 112) / 8;
-        public const int DOCLowContrastNarrow = ((256 * 256 * 8) / 3 + 112) / 8;
-        public const int DOCLowContrastMedium = ((256 * 256 * 8) / 3 + 112) / 8;
-        public const int DOCLowContrastFull = ((256 * 256 * 8) / 3 + 112) / 8;  // One every 2 sec
-        public const int DOCSingleLEDScale3 = ((256 * 256 * 12) / 3 + 112) / 8;  // one every 2.5 sec
-        public const int DOCAllLEDScale3 = ((256 * 256 * 12) / 3 + 112) / 8;
-        public const int DOCAllLEDScale2 = ((512 * 512 * 12) / 3 + 112) / 8;
-        public const int DOCAllLEDScale1 = ((2048 * 2048 * 12) / 3 + 112) / 8;
+        // The size of various payload packets, in bytes.  Note that I should be rounding up, but I'm not, for now.
+        // These come from Payload Data Rates per Activity_20Jan2017.xlsx
+        public const int DOCHighResNarrow = 11184923 / 8;
+        public const int DOCLowContrastNarrow = 116620 / 8;
+        public const int DOCLowContrastMedium = 174875 / 8;
+        public const int DOCLowContrastFull = 349600 / 8;                        // One every 2 sec
+        public const int DOCSingleLEDScale3 = 524400 / 8;  // one every 2.5 sec
+        public const int DOCAllLEDScale3 = 524400 / 8;
+        public const int DOCAllLEDScale2 = 2097264 / 8;
+        public const int DOCAllLEDScale0 = 33554544 / 8;
 
-        public const float EmergencyStopTime = 1000f;
+        public float NIRVSSEvalLatency = 90f;
+
+        public const float EmergencyStopTime = 1000000f;
 
         public bool PrintMessages = false;
         public bool PrintReport = false;
@@ -83,13 +98,13 @@ namespace Downlink
 
         public bool StopRequest = false;
 
-        public int RoverHighPriorityVC = 0;
-        public int RoverLowPriorityVC = 0;
-        public int RoverImageVC = 1;
-        public int PayloadHighPriority = 2;
-        public int PayloadHighPriorityImage = 3;
-        public int PayloadLowPriorityImage = 4;
-        public int IdleVC = 63;
+        public const int RoverHighPriorityVC = 0;
+        public const int RoverLowPriorityVC = 0;
+        public const int RoverImageVC = 1;
+        public const int PayloadHighPriority = 2;
+        public const int PayloadHighPriorityImage = 3;
+        public const int PayloadLowPriorityImage = 4;
+        public const int IdleVC = 63;
 
         // Components in all models
 
@@ -104,6 +119,8 @@ namespace Downlink
         {
             DownlinkRate = _DownlinkRate;  // initialize
         }
+
+        public string ModelName => GetType().ToString();
 
         public static Event First => TheModel.EventQueue.Count > 0 ? TheModel.EventQueue.First : null;
         public static float FirstTime => TheModel.EventQueue.Count > 0 ? TheModel.EventQueue.First.Time : float.MaxValue;
@@ -295,7 +312,7 @@ namespace Downlink
                 IsDriving = false;
                 Message("Rover stops driving");
                 Position += DriveStep;
-                FrameGenerator.Buffers[RoverImageVC].Receive(new Packet { APID = APID.RoverImagePair, Length = NavPayload, Timestamp = TheModel.Time });
+                FrameGenerator.Buffers[RoverImageVC].Receive(new RoverImagePair { APID = APID.RoverImagePair, Length = NavPayload, Timestamp = TheModel.Time, RoverPosition = Position });
 
                 // DOC images are triggered in ModelDocGeneration
             }
@@ -307,6 +324,7 @@ namespace Downlink
             public int CommandCount = 0;
             public void SendDriveCommand()
             {
+                Message(@"Driver asked to send drive comomand");
                 if (CommandCount++ > 10)
                 {
                     Message(@"The driver is ready to send command but stopping");
@@ -317,10 +335,18 @@ namespace Downlink
             }
             public void EvalImage(Packet p)
             {
-                TheModel.Message("Driver starts evaluating image");
+                var ri = p as RoverImagePair;
+                if (ri == null)
+                    throw new Exception("Received a rover image packet that wasn't of the proper type");
+                TheModel.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
                 if (TheModel.TheCase == ModelCase.Rails)
                     Enqueue(new Thunk(TheModel.Time + DriverDecisionTime, () => SendDriveCommand()));
             }
+        }
+
+        public class RoverImagePair : Packet
+        {
+            public float RoverPosition { get; set; }
         }
 
         public class DOCImage : Packet
@@ -503,12 +529,15 @@ namespace Downlink
             public PacketQueue PacketQueue { get { return _PacketQueue; } set { _PacketQueue = value; _PacketQueue.Owner = this; } }
             public int VirtualChannel;
             public Frame Frame;
-            public float TimeoutTime { get; set; } = float.MaxValue;
+            public float WakeupTime { get; set; } = 0f;
             public float Timeout { get; set; } = 10f;
-            public bool IsTimedOut => TheModel.Time > TimeoutTime && ContainsData;
+            public bool IsTimedOut => TheModel.Time > WakeupTime && ContainsData;
             public bool ContainsData => !PacketQueue.IsEmpty || (Frame != null && !Frame.IsEmpty);
             public override void Build() { PacketQueue.Build(); }
-            public bool Receive(Packet p) { return PacketQueue.Receive(p); if (Owner != null) Owner.WakeUp(); }
+            public bool Receive(Packet p) {
+                if (Owner != null) Owner.WakeUp();
+                return PacketQueue.Receive(p);
+            }
             public Frame TryToFillFrame()
             {
                 if (Frame == null)
@@ -524,6 +553,10 @@ namespace Downlink
                         if (Frame.Capacity >= f.Length)
                         {   // can fit
                             Frame.Add(f);
+                            //mhs
+                            if (f.APID == APID.DOCProspectingImage)
+                                Console.WriteLine(@"Writing last fragment of a DOCProspectingImage");
+
                         }
                         else
                         {
@@ -553,6 +586,9 @@ namespace Downlink
                 return Frame;
             }
             public void WakeUp() { if (Owner != null) Owner.WakeUp(); }
+            public void UpdateTimeout() {
+                WakeupTime = TheModel.Time + Timeout;
+            }
         }
 
         public class FrameGenerator : Component, Event, PacketQueueOwner
@@ -584,20 +620,46 @@ namespace Downlink
                 foreach (var b in Buffers) { b.Start(); }
                 TheModel.Enqueue(this);
             }
+
+            //mhs
+            private List<Frame> FramesSent = new List<Frame>();
+
             public void Execute(Model m)
             {
                 var frame = GetNextFrame();
+                Debug.Assert(frame != null);
+
+                //mhs
+                //if (FramesSent.Contains(frame))
+                //    Console.WriteLine("here");
+                //FramesSent.Add(frame);
+
+                //mhs
+                //if (frame.VirtualChannel == PayloadHighPriorityImage)
+                //    Console.WriteLine("Sending PayloadHighPriorityImage frame");
+
+                if (frame.VirtualChannel != IdleVC)
+                {
+                    var buf = Buffers[frame.VirtualChannel];
+                    buf.UpdateTimeout();
+                    buf.Frame = null;
+                }
                 Enqueue(new Thunk(Time + TheModel.DownlinkLatency, () => GroundSystem.Receive(frame)));  // idle frame
-                Time = Time + FrameLatency;
+                Time += FrameLatency;
                 TheModel.Enqueue(this);
             }
             // Always returns a frame to send
             protected Frame GetNextFrame()
             {
+                Time = Time;
+
                 // Look for the first frame that has timed out
                 foreach (var buffer in Buffers)
                     if (buffer.IsTimedOut)
+                    {
+                        //Message("VC{0} timing out", buffer.VirtualChannel);
                         return buffer.TryToFillFrame();
+                    }
 
                 // Look for the first full buffer
                 foreach (var buffer in Buffers)
@@ -614,7 +676,7 @@ namespace Downlink
                     if (!frame.IsEmpty)
                         return frame;
                 }
-                return new Frame { VirtualChannel = TheModel.IdleVC };  // Idle Frame
+                return new Frame { VirtualChannel = IdleVC };  // Idle Frame
             }
             public void WakeUp() { }
         }
@@ -629,8 +691,19 @@ namespace Downlink
             public long[] FrameCounter = new long[64]; // How should this be initialized?
 
             public List<Packet> Packets = new List<Packet>();
+
+
+            //mhs
+            private List<Frame> FramesSeen = new List<Frame>();
+
             public void Receive(Frame f)
             {
+                //mhs
+                //if (FramesSeen.Contains(f))
+                //    Console.WriteLine("here");
+                //FramesSeen.Add(f);
+                //Message("Received frame from VC{0}", f.VirtualChannel);
+
                 FrameCount++;
                 FrameCounter[f.VirtualChannel]++;
                 TotalBytesReceived += RP15FrameLength;
@@ -638,6 +711,9 @@ namespace Downlink
                     if (frag.IsFinal)  // Assumes no packet loss, for now
                     {
                         var packet = frag.Packet;
+                        //mhs
+                        //if (packet.APID == APID.DOCProspectingImage)
+                        //Console.WriteLine("Ground received {0} timestamp={1}", packet.APID, packet.Timestamp);
                         TotalBytesInPackets += packet.Length;
                         packet.Received = TheModel.Time;
                         Packets.Add(packet);
@@ -650,9 +726,14 @@ namespace Downlink
                             TheModel.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
                             if (TheModel.TheCase == ModelCase.ScienceStation && di.SequenceNumber == 3 && di.RoverPosition == Rover.Position)
                             {
-                                TheModel.Message("NIRVSS allows driver to send drive command");
-                                Enqueue(new Thunk(TheModel.Time + UplinkLatency, () => Driver.SendDriveCommand()));
-                                //TheModel.StopRequest = true;
+                                TheModel.Message("NIRVSS starts evaluating the final waypoint image");
+                                Enqueue(new Thunk(TheModel.Time + TheModel.NIRVSSEvalLatency, () =>
+                                 {
+                                     TheModel.Message("NIRVSS allows driver to send drive command");
+                                     // NIRVSS communicates with Driver with 0 latency
+                                     Driver.SendDriveCommand();
+                                 }
+                                ));
                             }
                         }
                     }
@@ -735,7 +816,8 @@ namespace Downlink
             Rover.FrameGenerator = FrameGenerator;
 
             // Wire up the packet generators through the frame generator
-            var timeouts = new float[] { 2f, 5f, 6f, 7f, 10f };
+            //var timeouts = new float[] { 2f, 5f, 6f, 7f, 10f };
+            var timeouts = new float[] { 1f, 1f, 1f, 1f, 1f };
             FrameGenerator.Buffers = Enumerable.Range(0, timeouts.Length).Select(i => new VirtualChannelBuffer { VirtualChannel = i, PacketQueue = new PacketQueue { Size = PacketQueueSize }, Timeout = timeouts[i], Owner = FrameGenerator }).ToList();
 
             RoverHighPacketGenerator.Receiver = FrameGenerator.Buffers[RoverHighPriorityVC].PacketQueue;
@@ -753,8 +835,8 @@ namespace Downlink
             Enqueue(1.5f, ModelDocGeneration);
         }
 
-        // Runs at 1 Hz
-        int _DocWaypointImageCount = 0;
+        // Runs at .2 hz while driving and 1 hz when stopped
+        int _DocWaypointImageCount = 100;  // Start high so that waypoint images aren't generated for position 0
         void ModelDocGeneration()
         {
             if (Rover.IsDriving)
@@ -763,6 +845,7 @@ namespace Downlink
                 FrameGenerator.Buffers[PayloadHighPriorityImage].Receive(p);
                 //Message(@"  Sending driving doc image");
                 _DocWaypointImageCount = 0;
+                Enqueue(Time + 5f, ModelDocGeneration);
             }
             else
             {
@@ -774,8 +857,8 @@ namespace Downlink
                     Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
                     _DocWaypointImageCount++;
                 }
+                Enqueue(Time + 1f, ModelDocGeneration);
             }
-            Enqueue(Time + 1f, ModelDocGeneration);
         }
 
         public override void Stop()
@@ -786,6 +869,7 @@ namespace Downlink
                 Report(@"No packets were received.");
                 return;
             }
+            Report(@"Report for {0}", ModelName);
             Report(@"The rover drove {0} meters in {1} seconds", Rover.Position, Time);
             var smg = 100f * Rover.Position / Time;
             Report(@"SMG = {0} cm/sec", smg.ToString("F3").PadLeft(10));
@@ -793,7 +877,7 @@ namespace Downlink
 
             Report(@"{0} frames were received", GroundSystem.FrameCount.ToString().PadLeft(10));
             for (var i = 0; i < FrameGenerator.Buffers.Count; i++)
-                Report(@"{0} VC{1} frames were received ({2}%), {3} were dropped ({4} bytes)",
+                Report(@"{0} VC{1} frames were received ({2}%), {3} packets were dropped entering this vc packet queue ({4} bytes)",
                     GroundSystem.FrameCounter[i].ToString().PadLeft(10),
                     i,
                     (GroundSystem.FrameCounter[i] / (float)GroundSystem.FrameCount).ToString("F2").PadLeft(6),
@@ -834,8 +918,8 @@ namespace Downlink
             var max = lst.SafeMax(p => p.Latency);
             Report(@"Packet Report for {0}", title);
             Report(@"  {0} packets were received", packetCount);
-            Report(@"  min,max,avg latency = [{0:F3}, {1:F3}, {2:F3}] sec", min, max, averageLatency);
-            Report(@"  The latency standard deviation was {0:F3} sec", latencyStdDev);
+            Report(@"  latency min,avg,max = [{0:F3}, {1:F3}, {2:F3}] sec", min, averageLatency, max);
+            Report(@"  latency stddev = {0:F3} sec", latencyStdDev);
         }
 
         private void PacketsInFlight(APID apid, out int packetCount, out int byteCount)
