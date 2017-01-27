@@ -44,40 +44,10 @@ namespace Downlink
         }
         public override void Start()
         {
-            FrameGenerator.Start();
-            GroundSystem.Start();
-            RoverHighPacketGenerator.Start();
-            PayloadHighPacketGenerator.Start();
+            base.Start();  // This starts all of the components            
             Enqueue(new Thunk(Time, () => Driver.SendDriveCommand()));
             if (CaptureStates)
                 Enqueue(new CaptureState { Model = this, Delay = 1f });
-            Enqueue(1.5f, ModelDocGeneration);
-        }
-
-        // Runs at .2 hz while driving and 1 hz when stopped
-        int _DocWaypointImageCount = 100;  // Start high so that waypoint images aren't generated for position 0
-        void ModelDocGeneration()
-        {
-            if (Rover.IsDriving)
-            {
-                var p = new Packet { APID = APID.DOCProspectingImage, Length = DOCLowContrastNarrow, Timestamp = Time };
-                FrameGenerator.Buffers[PayloadHighPriorityImage].Receive(p);
-                //Message(@"  Sending driving doc image");
-                _DocWaypointImageCount = 0;
-                Enqueue(Time + 5f, ModelDocGeneration);
-            }
-            else
-            {
-                if (_DocWaypointImageCount < 9)
-                {
-                    var p = new DOCImage { APID = APID.DOCWaypointImage, Length = DOCAllLEDScale3, Timestamp = Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = Rover.Position };
-                    var vc = _DocWaypointImageCount < 4 ? PayloadHighPriorityImage : PayloadLowPriorityImage;
-                    FrameGenerator.Buffers[vc].Receive(p);
-                    Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
-                    _DocWaypointImageCount++;
-                }
-                Enqueue(Time + 1f, ModelDocGeneration);
-            }
         }
 
         public override void Stop()

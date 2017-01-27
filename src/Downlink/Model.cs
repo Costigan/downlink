@@ -133,7 +133,10 @@ namespace Downlink
         public virtual void Build()
         {
         }
-        public virtual void Start() { }
+        public virtual void Start()
+        {
+            foreach (var c in Components) c.Start();
+        }
         public virtual void Stop() { }
         public virtual void GenerateFrame() { }
 

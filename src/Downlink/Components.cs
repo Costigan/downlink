@@ -10,7 +10,16 @@ namespace Downlink
 {
     public class Component
     {
-        public Model Model;
+        private Model _Model;
+        public Model Model { get { return _Model; } set
+            {
+                if (_Model!=null)
+                    _Model.Components.Remove(this);
+                _Model = value;
+                if (_Model != null && !_Model.Components.Contains(this))
+                    _Model.Components.Add(this);
+            }
+        }
         public virtual void Build() { }
         public virtual void Start() { }
         public virtual void Stop() { }
@@ -402,6 +411,11 @@ namespace Downlink
         public int RoverImageVC = -1;
         public bool IsDriving = false;
         public float Position = 0f;
+        public override void Start()
+        {
+            base.Start();
+            Enqueue(1.5f, ModelDocGeneration);
+        }
         public void Drive()
         {
             IsDriving = true;
@@ -417,6 +431,32 @@ namespace Downlink
             FrameGenerator.Buffers[RoverImageVC].Receive(new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
 
             // DOC images are triggered in ModelDocGeneration
+        }
+
+        // Runs at .2 hz while driving and 1 hz when stopped
+        int _DocWaypointImageCount = 100;  // Start high so that waypoint images aren't generated for position 0
+        void ModelDocGeneration()
+        {
+            if (IsDriving)
+            {
+                var p = new Packet { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
+                FrameGenerator.Buffers[Model.PayloadHighPriorityImage].Receive(p);
+                //Message(@"  Sending driving doc image");
+                _DocWaypointImageCount = 0;
+                Enqueue(Model.Time + 5f, ModelDocGeneration);
+            }
+            else
+            {
+                if (_DocWaypointImageCount < 9)
+                {
+                    var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = Position };
+                    var vc = _DocWaypointImageCount < 4 ? Model.PayloadHighPriorityImage : Model.PayloadLowPriorityImage;
+                    FrameGenerator.Buffers[vc].Receive(p);
+                    Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
+                    _DocWaypointImageCount++;
+                }
+                Enqueue(Model.Time + 1f, ModelDocGeneration);
+            }
         }
     }
 
