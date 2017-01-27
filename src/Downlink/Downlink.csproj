@@ -64,8 +64,6 @@
     <Compile Include="HSLColor.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Model.cs" />
-    <Compile Include="OldExtensions.cs" />
-    <Compile Include="OldModel.cs" />
     <Compile Include="RunModel.cs">
       <SubType>Form</SubType>
     </Compile>
