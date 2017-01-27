@@ -1,0 +1,9 @@
+Notes
+* Flow control
+* Frame ring buffer
+
+* Models
+  * Current rover/payload avionics
+
+* Changes
+
