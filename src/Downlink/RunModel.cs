@@ -61,7 +61,9 @@ namespace Downlink
                 new Model[]
                 {
                     new SingleMultiplexorRails(),
-                    new SingleMultiplexorScience()
+                    new SingleMultiplexorScience(),
+                    new SeparateAvionicsRails(),
+                    new SeparateAvionicsScience()
                 }
                 );
             lbPlots.Items.AddRange(

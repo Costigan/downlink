@@ -28,7 +28,7 @@ namespace Downlink
             GroundSystem = new GroundSystem { Model = this, };
 
             FrameGenerator = new FrameGenerator { Model = this, DownlinkRate = DownlinkRate };
-            PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 40000f };
+            PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 80000f };
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // high pri
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc high pri
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc  other
@@ -48,14 +48,14 @@ namespace Downlink
             FrameGenerator.Buffers = Enumerable.Range(0, timeouts.Length).Select(i => new VirtualChannelBuffer { Model = this, VirtualChannel = i, PacketQueue = new PacketQueue { Size = PacketQueueSize }, Timeout = timeouts[i], Owner = FrameGenerator }).ToList();
 
             RoverHighPacketGenerator.Receiver = FrameGenerator.Buffers[RoverHighPriorityVC].PacketQueue;
-            PayloadHighPacketGenerator.Receiver = PayloadAvionics.Queues[0];
-
-            PayloadHighPacketGenerator.Receiver = FrameGenerator.Buffers[PayloadHighPriority].PacketQueue;
-
+ 
             Rover.RoverImageReceiver = FrameGenerator.Buffers[RoverImageVC];
-            Rover.RoverHighPriorityReceiver = FrameGenerator.Buffers[Model.PayloadHighPriorityImage];
-            Rover.DOCHighPriorityReceiver = FrameGenerator.Buffers[Model.PayloadHighPriorityImage];
-            Rover.DOCLowPriorityReceiver = FrameGenerator.Buffers[Model.PayloadLowPriorityImage];
+            Rover.RoverHighPriorityReceiver = FrameGenerator.Buffers[Model.RoverHighPriorityVC];
+
+            PayloadHighPacketGenerator.Receiver = PayloadAvionics.Queues[0];
+            Rover.DOCHighPriorityReceiver = PayloadAvionics.Queues[1];
+            Rover.DOCLowPriorityReceiver = PayloadAvionics.Queues[2];
+            PayloadAvionics.Receiver = FrameGenerator.Buffers[PayloadHighPriority];
         }
 
         public override void Start()
@@ -127,4 +127,8 @@ namespace Downlink
     }
 
     public class SeparateAvionicsRails : SeparateAvionics { }
+    public class SeparateAvionicsScience : SeparateAvionics
+    {
+        public SeparateAvionicsScience() { TheCase = ModelCase.ScienceStation; }
+    }
 }
