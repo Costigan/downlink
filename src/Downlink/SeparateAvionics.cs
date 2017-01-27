@@ -1,18 +1,24 @@
-﻿using Priority_Queue;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Downlink
 {
-    public class SingleMultiplexor : Model
+    public class SeparateAvionics : Model
     {
-        // Input Variables
-
         public Rover Rover;
         public Driver Driver;
+        public PriorityPacketQueue PayloadAvionics;
         public FrameGenerator FrameGenerator;
         public GroundSystem GroundSystem;
         public PacketGenerator RoverHighPacketGenerator, PayloadHighPacketGenerator;
+
+        public SeparateAvionics()
+        {
+            TheCase = ModelCase.Rails;
+        }
 
         public override void Build()
         {
@@ -20,7 +26,13 @@ namespace Downlink
             Rover = new Rover { Model = this, RoverImageVC = RoverImageVC };
             Driver = new Driver { Model = this, };
             GroundSystem = new GroundSystem { Model = this, };
+
             FrameGenerator = new FrameGenerator { Model = this, DownlinkRate = DownlinkRate };
+            PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 40000f };
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // high pri
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc high pri
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc  other
+
             RoverHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.RoverHealth, BitsPerSecond = RoverHealthBitsPerSecond, PacketSize = 100, StartTimeOffset = 0f };
             PayloadHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.PayloadGeneral, BitsPerSecond = PayloadWithoutDOCBitsPerSecond, PacketSize = 100, StartTimeOffset = 0.1f };
 
@@ -32,10 +44,12 @@ namespace Downlink
 
             // Wire up the packet generators through the frame generator
             //var timeouts = new float[] { 2f, 5f, 6f, 7f, 10f };
-            var timeouts = new float[] { 1f, 1f, 1f, 1f, 1f };
+            var timeouts = new float[] { 1f, 1f, 1f };
             FrameGenerator.Buffers = Enumerable.Range(0, timeouts.Length).Select(i => new VirtualChannelBuffer { Model = this, VirtualChannel = i, PacketQueue = new PacketQueue { Size = PacketQueueSize }, Timeout = timeouts[i], Owner = FrameGenerator }).ToList();
 
             RoverHighPacketGenerator.Receiver = FrameGenerator.Buffers[RoverHighPriorityVC].PacketQueue;
+            PayloadHighPacketGenerator.Receiver = PayloadAvionics.Queues[0];
+
             PayloadHighPacketGenerator.Receiver = FrameGenerator.Buffers[PayloadHighPriority].PacketQueue;
 
             Rover.RoverImageReceiver = FrameGenerator.Buffers[RoverImageVC];
@@ -48,8 +62,8 @@ namespace Downlink
         {
             base.Start();  // This starts all of the components            
             Enqueue(new Thunk(Time, () => Driver.SendDriveCommand()));
-            if (CaptureStates)
-                Enqueue(new CaptureState { Model = this, Delay = 1f });
+            //if (CaptureStates)
+            //    Enqueue(new CaptureState { Model = this, Delay = 1f });
         }
 
         public override void Stop()
@@ -112,30 +126,5 @@ namespace Downlink
         }
     }
 
-    public class SingleMultiplexorRails : SingleMultiplexor
-    {
-        public SingleMultiplexorRails() { TheCase = ModelCase.Rails; }
-    }
-
-    public class SingleMultiplexorScience : SingleMultiplexor
-    {
-        public SingleMultiplexorScience() { TheCase = ModelCase.ScienceStation; }
-    }
-
-    public class Sample
-    {
-        public float Time;
-        public int[] QueueLength { get; set; }
-        public int[] QueueByteCount { get; set; }
-        public int[] Drops { get; set; }
-
-        public void Capture(SingleMultiplexor model)
-        {
-            Time = model.Time;
-            QueueLength = model.FrameGenerator.Buffers.Select(q => q.PacketQueue.Count).ToArray();
-            Drops = model.FrameGenerator.Buffers.Select(q => q.PacketQueue.DropCount).ToArray();
-            QueueByteCount = model.FrameGenerator.Buffers.Select(q => q.PacketQueue.ByteCount).ToArray();
-            model.StateSamples.Add(this);
-        }
-    }
+    public class SeparateAvionicsRails : SeparateAvionics { }
 }

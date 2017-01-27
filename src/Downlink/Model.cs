@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace Downlink
 {
     // Case 4
-    public class Model
+    public abstract class Model
     {
         #region Global Variables
 
@@ -115,13 +115,13 @@ namespace Downlink
 
         #endregion
 
-
         public Model()
         {
             DownlinkRate = _DownlinkRate;  // initialize
         }
 
         public string ModelName => GetType().ToString();
+        public override string ToString() => ModelName;
 
         public static Event First => TheModel.EventQueue.Count > 0 ? TheModel.EventQueue.First : null;
         public static float FirstTime => TheModel.EventQueue.Count > 0 ? TheModel.EventQueue.First.Time : float.MaxValue;
@@ -218,6 +218,61 @@ namespace Downlink
         }
 
         public static bool MatchingAPID(APID pattern, APID concrete) => pattern == APID.AllAPIDS || pattern == concrete;
+
+        public abstract void PacketsInFlight(APID apid, out int packetCount, out int byteCount);
+
+        public virtual void PacketReport(IEnumerable<Packet> packets, string title)
+        {
+            var lst = packets.ToList();
+            var packetCount = lst.Count;
+            var averageLatency = lst.SafeAverage(p => p.Latency);
+            var latencyStdDev = lst.StandardDeviation(p => p.Latency);
+            var min = lst.SafeMin(p => p.Latency);
+            var max = lst.SafeMax(p => p.Latency);
+            Report(@"Packet Report for {0}", title);
+            Report(@"  {0} packets were received", packetCount);
+            Report(@"  latency min,avg,max = [{0:F3}, {1:F3}, {2:F3}] sec", min, averageLatency, max);
+            Report(@"  latency stddev = {0:F3} sec", latencyStdDev);
+        }
+
+        public void PacketsInFlight(APID apid, Frame f, ref int packetCount, ref int byteCount)
+        {
+            if (f == null) return;
+            foreach (var pf in f.Fragments)
+            {
+                if (!MatchingAPID(apid, pf.Packet.APID))
+                    continue;
+                if (pf.IsFinal)
+                    packetCount++;
+                byteCount += pf.Length;
+            }
+        }
+
+        public void PacketsInFlight(APID apid, PacketQueue q, ref int packetCount, ref int byteCount)
+        {
+            q.PacketsInFlight(apid, ref packetCount, ref byteCount);
+        }
+
+        public void PacketsInFlight(APID apid, SimplePriorityQueue<Event, float> q, ref int packetCount, ref int byteCount)
+        {
+            var events = new Stack<Event>();
+            while (q.Count > 0)
+            {
+                var e = q.Dequeue();
+                events.Push(e);
+                if (e.Time >= Time)
+                    continue;
+                var fd = e as FrameDelivery;
+                if (fd == null)
+                    continue;
+                PacketsInFlight(apid, fd.Frame, ref packetCount, ref byteCount);
+            }
+            while (events.Count > 0)
+            {
+                var e = events.Pop();
+                q.Enqueue(e, e.Time);
+            }
+        }
 
         #endregion
 

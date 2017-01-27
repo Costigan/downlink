@@ -407,7 +407,10 @@ namespace Downlink
 
     public class Rover : Component
     {
-        public FrameGenerator FrameGenerator;
+        public PacketReceiver RoverHighPriorityReceiver;
+        public PacketReceiver RoverImageReceiver;
+        public PacketReceiver DOCHighPriorityReceiver;
+        public PacketReceiver DOCLowPriorityReceiver;
         public int RoverImageVC = -1;
         public bool IsDriving = false;
         public float Position = 0f;
@@ -428,7 +431,7 @@ namespace Downlink
             IsDriving = false;
             Message("Rover stops driving");
             Position += Model.DriveStep;
-            FrameGenerator.Buffers[RoverImageVC].Receive(new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
+            RoverImageReceiver.Receive(new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
 
             // DOC images are triggered in ModelDocGeneration
         }
@@ -440,7 +443,7 @@ namespace Downlink
             if (IsDriving)
             {
                 var p = new Packet { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
-                FrameGenerator.Buffers[Model.PayloadHighPriorityImage].Receive(p);
+                RoverHighPriorityReceiver.Receive(p);
                 //Message(@"  Sending driving doc image");
                 _DocWaypointImageCount = 0;
                 Enqueue(Model.Time + 5f, ModelDocGeneration);
@@ -450,8 +453,8 @@ namespace Downlink
                 if (_DocWaypointImageCount < 9)
                 {
                     var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = Position };
-                    var vc = _DocWaypointImageCount < 4 ? Model.PayloadHighPriorityImage : Model.PayloadLowPriorityImage;
-                    FrameGenerator.Buffers[vc].Receive(p);
+                    var vc = _DocWaypointImageCount < 4 ? DOCHighPriorityReceiver : DOCLowPriorityReceiver;
+                    vc.Receive(p);
                     Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
                     _DocWaypointImageCount++;
                 }

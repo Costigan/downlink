@@ -17,21 +17,23 @@ namespace Downlink
 
         private void button1_Click(object sender, EventArgs e)
         {
-            Model model = new SingleMultiplexor { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
+            var modelChoice = lbModel.SelectedItem;
+            if (modelChoice == null)
+            {
+                MessageBox.Show(@"Please select a model from the list on the left");
+                return;
+            }
+            var mtype = modelChoice.GetType();
+            var model = (Model)Activator.CreateInstance(mtype);
+            model.PrintMessages = cbPrintMessages.Checked;
+            model.PrintReport = cbPrintMessages.Checked;
+
+            //Model model = new SingleMultiplexor { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
             //var model = new OldDownlink.SimpleModel { PrintMessages = cbPrintMessages.Checked, PrintReport = cbPrintMessages.Checked, TheCase = GetTheCase() };
             model.Run();
 
             if (!cbPrintMessages.Checked)
                 FillReport(model);
-        }
-
-        private Model.ModelCase GetTheCase()
-        {
-            if (rbRails.Checked)
-                return Model.ModelCase.Rails;
-            if (rbScienceStation.Checked)
-                return Model.ModelCase.ScienceStation;
-            return Model.ModelCase.Rails;
         }
 
         private void FillReport(Model m)
@@ -55,6 +57,13 @@ namespace Downlink
 
         private void RunModel_Load(object sender, EventArgs e)
         {
+            lbModel.Items.AddRange(
+                new Model[]
+                {
+                    new SingleMultiplexorRails(),
+                    new SingleMultiplexorScience()
+                }
+                );
             lbPlots.Items.AddRange(
                 new PlotAction[]
                 {

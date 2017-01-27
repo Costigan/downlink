@@ -36,9 +36,8 @@
             this.txtReport = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.rbScienceStation = new System.Windows.Forms.RadioButton();
-            this.rbRails = new System.Windows.Forms.RadioButton();
+            this.groupBox4 = new System.Windows.Forms.GroupBox();
+            this.lbModel = new System.Windows.Forms.ListBox();
             this.cbPrintMessages = new System.Windows.Forms.CheckBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabReports = new System.Windows.Forms.TabPage();
@@ -58,7 +57,7 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.panel1.SuspendLayout();
-            this.groupBox3.SuspendLayout();
+            this.groupBox4.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabReports.SuspendLayout();
             this.tabPlots.SuspendLayout();
@@ -88,7 +87,7 @@
             this.txtEvents.Multiline = true;
             this.txtEvents.Name = "txtEvents";
             this.txtEvents.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtEvents.Size = new System.Drawing.Size(677, 616);
+            this.txtEvents.Size = new System.Drawing.Size(258, 616);
             this.txtEvents.TabIndex = 1;
             // 
             // groupBox1
@@ -97,7 +96,7 @@
             this.groupBox1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBox1.Location = new System.Drawing.Point(0, 0);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(683, 635);
+            this.groupBox1.Size = new System.Drawing.Size(264, 635);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Events";
@@ -108,7 +107,7 @@
             this.groupBox2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBox2.Location = new System.Drawing.Point(0, 0);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(341, 635);
+            this.groupBox2.Size = new System.Drawing.Size(819, 635);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Report";
@@ -121,7 +120,7 @@
             this.txtReport.Multiline = true;
             this.txtReport.Name = "txtReport";
             this.txtReport.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtReport.Size = new System.Drawing.Size(335, 616);
+            this.txtReport.Size = new System.Drawing.Size(813, 616);
             this.txtReport.TabIndex = 0;
             // 
             // splitContainer1
@@ -137,53 +136,39 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.groupBox1);
-            this.splitContainer1.Size = new System.Drawing.Size(1028, 635);
-            this.splitContainer1.SplitterDistance = 341;
+            this.splitContainer1.Size = new System.Drawing.Size(1087, 635);
+            this.splitContainer1.SplitterDistance = 819;
             this.splitContainer1.TabIndex = 4;
             // 
             // panel1
             // 
-            this.panel1.Controls.Add(this.groupBox3);
+            this.panel1.Controls.Add(this.groupBox4);
             this.panel1.Controls.Add(this.cbPrintMessages);
             this.panel1.Controls.Add(this.btnRun);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Left;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(134, 667);
+            this.panel1.Size = new System.Drawing.Size(234, 667);
             this.panel1.TabIndex = 5;
             // 
-            // groupBox3
+            // groupBox4
             // 
-            this.groupBox3.Controls.Add(this.rbScienceStation);
-            this.groupBox3.Controls.Add(this.rbRails);
-            this.groupBox3.Location = new System.Drawing.Point(12, 64);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(116, 67);
-            this.groupBox3.TabIndex = 2;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Mode";
+            this.groupBox4.Controls.Add(this.lbModel);
+            this.groupBox4.Location = new System.Drawing.Point(12, 64);
+            this.groupBox4.Name = "groupBox4";
+            this.groupBox4.Size = new System.Drawing.Size(216, 425);
+            this.groupBox4.TabIndex = 4;
+            this.groupBox4.TabStop = false;
+            this.groupBox4.Text = "Choose one Model";
             // 
-            // rbScienceStation
+            // lbModel
             // 
-            this.rbScienceStation.AutoSize = true;
-            this.rbScienceStation.Location = new System.Drawing.Point(14, 41);
-            this.rbScienceStation.Name = "rbScienceStation";
-            this.rbScienceStation.Size = new System.Drawing.Size(100, 17);
-            this.rbScienceStation.TabIndex = 0;
-            this.rbScienceStation.Text = "Science Station";
-            this.rbScienceStation.UseVisualStyleBackColor = true;
-            // 
-            // rbRails
-            // 
-            this.rbRails.AutoSize = true;
-            this.rbRails.Checked = true;
-            this.rbRails.Location = new System.Drawing.Point(14, 18);
-            this.rbRails.Name = "rbRails";
-            this.rbRails.Size = new System.Drawing.Size(48, 17);
-            this.rbRails.TabIndex = 0;
-            this.rbRails.TabStop = true;
-            this.rbRails.Text = "Rails";
-            this.rbRails.UseVisualStyleBackColor = true;
+            this.lbModel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lbModel.FormattingEnabled = true;
+            this.lbModel.Location = new System.Drawing.Point(3, 16);
+            this.lbModel.Name = "lbModel";
+            this.lbModel.Size = new System.Drawing.Size(210, 406);
+            this.lbModel.TabIndex = 3;
             // 
             // cbPrintMessages
             // 
@@ -201,10 +186,10 @@
             this.tabControl1.Controls.Add(this.tabPlots);
             this.tabControl1.Controls.Add(this.tabOther);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabControl1.Location = new System.Drawing.Point(134, 0);
+            this.tabControl1.Location = new System.Drawing.Point(234, 0);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(1042, 667);
+            this.tabControl1.Size = new System.Drawing.Size(1101, 667);
             this.tabControl1.TabIndex = 6;
             // 
             // tabReports
@@ -213,7 +198,7 @@
             this.tabReports.Location = new System.Drawing.Point(4, 22);
             this.tabReports.Name = "tabReports";
             this.tabReports.Padding = new System.Windows.Forms.Padding(3);
-            this.tabReports.Size = new System.Drawing.Size(1034, 641);
+            this.tabReports.Size = new System.Drawing.Size(1093, 641);
             this.tabReports.TabIndex = 0;
             this.tabReports.Text = "Reports";
             this.tabReports.UseVisualStyleBackColor = true;
@@ -224,7 +209,7 @@
             this.tabPlots.Location = new System.Drawing.Point(4, 22);
             this.tabPlots.Name = "tabPlots";
             this.tabPlots.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPlots.Size = new System.Drawing.Size(1034, 641);
+            this.tabPlots.Size = new System.Drawing.Size(1093, 641);
             this.tabPlots.TabIndex = 1;
             this.tabPlots.Text = "Plots";
             this.tabPlots.UseVisualStyleBackColor = true;
@@ -242,8 +227,8 @@
             // splitContainer2.Panel2
             // 
             this.splitContainer2.Panel2.Controls.Add(this.zed1);
-            this.splitContainer2.Size = new System.Drawing.Size(1028, 635);
-            this.splitContainer2.SplitterDistance = 100;
+            this.splitContainer2.Size = new System.Drawing.Size(1087, 635);
+            this.splitContainer2.SplitterDistance = 105;
             this.splitContainer2.TabIndex = 0;
             // 
             // lbPlots
@@ -252,7 +237,7 @@
             this.lbPlots.FormattingEnabled = true;
             this.lbPlots.Location = new System.Drawing.Point(0, 0);
             this.lbPlots.Name = "lbPlots";
-            this.lbPlots.Size = new System.Drawing.Size(100, 635);
+            this.lbPlots.Size = new System.Drawing.Size(105, 635);
             this.lbPlots.TabIndex = 0;
             this.lbPlots.SelectedValueChanged += new System.EventHandler(this.lbPlots_SelectedValueChanged);
             // 
@@ -268,7 +253,7 @@
             this.zed1.ScrollMinX = 0D;
             this.zed1.ScrollMinY = 0D;
             this.zed1.ScrollMinY2 = 0D;
-            this.zed1.Size = new System.Drawing.Size(924, 635);
+            this.zed1.Size = new System.Drawing.Size(978, 635);
             this.zed1.TabIndex = 0;
             this.zed1.UseExtendedPrintDialog = true;
             // 
@@ -279,7 +264,7 @@
             this.tabOther.Controls.Add(this.panel2);
             this.tabOther.Location = new System.Drawing.Point(4, 22);
             this.tabOther.Name = "tabOther";
-            this.tabOther.Size = new System.Drawing.Size(1034, 641);
+            this.tabOther.Size = new System.Drawing.Size(1093, 641);
             this.tabOther.TabIndex = 2;
             this.tabOther.Text = "Other Calculations";
             this.tabOther.UseVisualStyleBackColor = true;
@@ -296,7 +281,7 @@
             this.zed2.ScrollMinX = 0D;
             this.zed2.ScrollMinY = 0D;
             this.zed2.ScrollMinY2 = 0D;
-            this.zed2.Size = new System.Drawing.Size(897, 641);
+            this.zed2.Size = new System.Drawing.Size(956, 641);
             this.zed2.TabIndex = 1;
             this.zed2.UseExtendedPrintDialog = true;
             // 
@@ -331,7 +316,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1176, 667);
+            this.ClientSize = new System.Drawing.Size(1335, 667);
             this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.panel1);
             this.Name = "RunModel";
@@ -347,8 +332,7 @@
             this.splitContainer1.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
+            this.groupBox4.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
             this.tabReports.ResumeLayout(false);
             this.tabPlots.ResumeLayout(false);
@@ -372,9 +356,6 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.CheckBox cbPrintMessages;
-        private System.Windows.Forms.GroupBox groupBox3;
-        private System.Windows.Forms.RadioButton rbScienceStation;
-        private System.Windows.Forms.RadioButton rbRails;
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabReports;
         private System.Windows.Forms.TabPage tabPlots;
@@ -386,6 +367,8 @@
         private System.Windows.Forms.Splitter splitter1;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button btnRateVsDrops;
+        private System.Windows.Forms.GroupBox groupBox4;
+        private System.Windows.Forms.ListBox lbModel;
     }
 }
 
