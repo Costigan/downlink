@@ -57,8 +57,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BaseDefinintions.cs" />
+    <Compile Include="Components.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="Global.cs" />
     <Compile Include="HSLColor.cs" />
+    <Compile Include="Interfaces.cs" />
     <Compile Include="Model.cs" />
     <Compile Include="OldExtensions.cs" />
     <Compile Include="OldModel.cs" />
@@ -70,6 +74,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SingleMultiplexor.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
