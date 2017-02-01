@@ -96,9 +96,24 @@ namespace Downlink
         public float Timestamp { get; set; }
         public float Received { get; set; }
         public float Latency => Received - Timestamp;
+        public override string ToString() => "<packet apid=" + APID + " timestamp=" + Timestamp + ">";
     }
 
+    /// <summary>
+    /// Fragment of a packet within a frame
+    /// </summary>
     public class PacketFragment : Packet
+    {
+        public Packet Packet { get; set; }
+        public int FragmentNumber { get; set; } = 1;
+        public int TotalFragments { get; set; } = 1;
+        public bool IsFinal => FragmentNumber == TotalFragments;
+    }
+
+    /// <summary>
+    /// Fragment of a large image packet.  These are not the same as PacketFragment's
+    /// </summary>
+    public class ImageFragment : Packet
     {
         public Packet Packet { get; set; }
         public int FragmentNumber { get; set; } = 1;

@@ -130,9 +130,7 @@ namespace Downlink
 
         public List<Component> Components = new List<Component>();
 
-        public virtual void Build()
-        {
-        }
+        public virtual void Build()        {        }
         public virtual void Start()
         {
             foreach (var c in Components) c.Start();
@@ -158,6 +156,12 @@ namespace Downlink
 
         public virtual void Run()
         {
+            Build();
+            RunInternal();
+        }
+
+        public virtual void RunInternal()
+        {
             if (TheModel != this && TheModel != null)
             {
                 if (TheModel.IsRunning)
@@ -168,7 +172,6 @@ namespace Downlink
             IsRunning = true;
             EventMessages = new List<string>();
             ReportMessages = new List<string>();
-            Build();
             Start();
             Loop();
             Stop();
@@ -179,8 +182,8 @@ namespace Downlink
 
         #region Helper Methods
 
-        public static void Enqueue(Thunk t) { TheModel.EventQueue.Enqueue(t, t.Time); }
-        public static void Enqueue(float t, Action a) { TheModel.EventQueue.Enqueue(new Thunk(t, a), t); }
+        public void Enqueue(Thunk t) { EventQueue.Enqueue(t, t.Time); }
+        public void Enqueue(float t, Action a) { EventQueue.Enqueue(new Thunk(t, a), t); }
         public void Enqueue(Event e) { EventQueue.Enqueue(e, e.Time); }
 
         public void Message(string msg, params object[] args)
@@ -219,7 +222,10 @@ namespace Downlink
 
         public static bool MatchingAPID(APID pattern, APID concrete) => pattern == APID.AllAPIDS || pattern == concrete;
 
-        public abstract void PacketsInFlight(APID apid, out int packetCount, out int byteCount);
+        public virtual void PacketsInFlight(APID apid, out int packetCount, out int byteCount)
+        {
+            packetCount = byteCount = 0;
+        }
 
         public virtual void PacketReport(IEnumerable<Packet> packets, string title)
         {
@@ -277,7 +283,4 @@ namespace Downlink
         #endregion
 
     }
-
-
-
 }

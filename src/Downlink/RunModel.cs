@@ -63,7 +63,8 @@ namespace Downlink
                     new SingleMultiplexorRails(),
                     new SingleMultiplexorScience(),
                     new SeparateAvionicsRails(),
-                    new SeparateAvionicsScience()
+                    new SeparateAvionicsScience(),
+                    new SeparateAvionicsRailsSingleMove()
                 }
                 );
             lbPlots.Items.AddRange(

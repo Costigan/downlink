@@ -28,7 +28,7 @@ namespace Downlink
             GroundSystem = new GroundSystem { Model = this, };
 
             FrameGenerator = new FrameGenerator { Model = this, DownlinkRate = DownlinkRate };
-            PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 80000f };
+            PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 10f };
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // high pri
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc high pri
             PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc  other
@@ -44,7 +44,7 @@ namespace Downlink
 
             // Wire up the packet generators through the frame generator
             //var timeouts = new float[] { 2f, 5f, 6f, 7f, 10f };
-            var timeouts = new float[] { 1f, 1f, 1f };
+            var timeouts = new float[] { 2f, 5f, 6f };
             FrameGenerator.Buffers = Enumerable.Range(0, timeouts.Length).Select(i => new VirtualChannelBuffer { Model = this, VirtualChannel = i, PacketQueue = new PacketQueue { Size = PacketQueueSize }, Timeout = timeouts[i], Owner = FrameGenerator }).ToList();
 
             RoverHighPacketGenerator.Receiver = FrameGenerator.Buffers[RoverHighPriorityVC].PacketQueue;
@@ -130,5 +130,14 @@ namespace Downlink
     public class SeparateAvionicsScience : SeparateAvionics
     {
         public SeparateAvionicsScience() { TheCase = ModelCase.ScienceStation; }
+    }
+
+    public class SeparateAvionicsRailsSingleMove : SeparateAvionics
+    {
+        public override void Build()
+        {
+            base.Build();
+            Driver.MaximumCommandCount = 1;
+        }
     }
 }

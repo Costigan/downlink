@@ -34,10 +34,9 @@ namespace Downlink
                 Model.EventMessages.Add(fullmsg);
         }
 
-        public static void Enqueue(Thunk t) { Model.Enqueue(t); }
-        public static void Enqueue(float t, Action a) { Model.Enqueue(t, a); }
+        public void Enqueue(Thunk t) { Model.Enqueue(t); }
+        public void Enqueue(float t, Action a) { Model.Enqueue(t, a); }
         public void Enqueue(Event e) { Model.Enqueue(e); }
-
     }
 
     /// <summary>
@@ -145,7 +144,8 @@ namespace Downlink
         public PacketReceiver Receiver;
         public float BitRate { get; set; } = 100000f;
         public float Time { get; set; } = 0f;
-        public bool PacketInFlight { get; set; } = false;
+        public Packet OutputPacket;
+        public bool PacketInFlight => OutputPacket != null;
         public List<PacketQueue> Queues = new List<PacketQueue>();
         public void AddQueue(PacketQueue q)
         {
@@ -155,16 +155,26 @@ namespace Downlink
         public override void Start() { Model.Enqueue(this); }
         public void Execute(Model m)
         {
-            var p = NextPacket();
-            if (p == null)
+            if (Receiver == null || BitRate == 0f) return;
+            if (OutputPacket != null)
             {
-                PacketInFlight = false;
-                return;
+                if (OutputPacket.Received > Model.Time)
+                {
+                    Time = OutputPacket.Received;
+                    Model.Enqueue(this);
+                    return;
+                }
+                OutputPacket.Received = Model.Time;
+                Receiver.Receive(OutputPacket);
+                OutputPacket = null;
             }
-            Receiver.Receive(p);
+            var p = NextPacket();
+            if (p == null) return;
+
             var transmissionTime = p.Length * 8 / BitRate;
             Time += transmissionTime;
-            PacketInFlight = true;
+            OutputPacket = p;
+            p.Received = Time;
             Model.Enqueue(this);
         }
         public Packet NextPacket()
@@ -356,6 +366,7 @@ namespace Downlink
         public long[] FrameCounter = new long[64]; // How should this be initialized?
 
         public List<Packet> Packets = new List<Packet>();
+        public List<Packet> ImagesSeen = new List<Packet>(); // all images that any part of has been received
 
         //mhs
         private List<Frame> FramesSeen = new List<Frame>();
@@ -380,27 +391,50 @@ namespace Downlink
                     //Console.WriteLine("Ground received {0} timestamp={1}", packet.APID, packet.Timestamp);
                     TotalBytesInPackets += packet.Length;
                     packet.Received = Model.Time;
-                    Packets.Add(packet);
-                    if (packet.APID == APID.RoverImagePair)
-                        Driver.EvalImage(packet);
-                    if (packet.APID == APID.DOCWaypointImage)
-                    {
-                        var di = packet as DOCImage;
-                        if (di == null) continue;
-                        Model.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
-                        if (Model.TheCase == Model.ModelCase.ScienceStation && di.SequenceNumber == 3 && di.RoverPosition == Rover.Position)
-                        {
-                            Model.Message("NIRVSS starts evaluating the final waypoint image");
-                            Enqueue(new Thunk(Model.Time + Model.NIRVSSEvalLatency, () =>
-                            {
-                                Model.Message("NIRVSS allows driver to send drive command");
-                                // NIRVSS communicates with Driver with 0 latency
-                                Driver.SendDriveCommand();
-                            }
-                            ));
-                        }
-                    }
+                    Receive(packet);
                 }
+        }
+
+        public void Receive(Packet p)
+        {
+            var f = p as ImageFragment;
+            if (f == null)
+            {
+                Handle(p);
+                return;
+            }
+            if (!ImagesSeen.Contains(f.Packet))
+                ImagesSeen.Add(f.Packet);
+            if (f.FragmentNumber == f.TotalFragments)
+                Handle(f.Packet);
+        }
+
+        public void Handle(Packet packet)
+        {
+            Packets.Add(packet);
+            if (packet.APID == APID.RoverImagePair)
+            {
+                Message(@"Received RoverImagePair timestamp={0}", packet.Timestamp);
+                Driver.EvalImage(packet);
+            }
+            if (packet.APID == APID.DOCWaypointImage)
+            {
+                var di = packet as DOCImage;
+                if (di == null) return;
+                Model.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
+                if (Model.TheCase == Model.ModelCase.ScienceStation && di.SequenceNumber == 3 && di.RoverPosition == Rover.Position)
+                {
+                    Model.Message("NIRVSS starts evaluating the final waypoint image");
+                    Enqueue(new Thunk(Model.Time + Model.NIRVSSEvalLatency, () =>
+                    {
+                        Model.Message("NIRVSS allows driver to send drive command");
+                        // NIRVSS communicates with Driver with 0 latency
+                        Driver.SendDriveCommand();
+                    }
+                    ));
+                }
+            }
+
         }
     }
 
@@ -431,7 +465,7 @@ namespace Downlink
             IsDriving = false;
             Message("Rover stops driving");
             Position += Model.DriveStep;
-            RoverImageReceiver.Receive(new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
+            EnqueueLongPacket(RoverHighPriorityReceiver, new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
 
             // DOC images are triggered in ModelDocGeneration
         }
@@ -442,8 +476,8 @@ namespace Downlink
         {
             if (IsDriving)
             {
-                var p = new Packet { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
-                RoverHighPriorityReceiver.Receive(p);
+                var p = new DOCImage { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
+                EnqueueLongPacket(DOCHighPriorityReceiver, p);
                 //Message(@"  Sending driving doc image");
                 _DocWaypointImageCount = 0;
                 Enqueue(Model.Time + 5f, ModelDocGeneration);
@@ -454,11 +488,25 @@ namespace Downlink
                 {
                     var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = Position };
                     var vc = _DocWaypointImageCount < 4 ? DOCHighPriorityReceiver : DOCLowPriorityReceiver;
-                    vc.Receive(p);
-                    Message(@"  Sending waypoint doc image {0} via VC{1}", _DocWaypointImageCount, vc);
+                    EnqueueLongPacket(vc, p);
+                    Message(@"  Sending waypoint doc image {0}", _DocWaypointImageCount);
                     _DocWaypointImageCount++;
                 }
                 Enqueue(Model.Time + 1f, ModelDocGeneration);
+            }
+        }
+        void EnqueueLongPacket(PacketReceiver r, Packet p)
+        {
+            const int fragmentSize = 4096;
+            if (p.Length <= fragmentSize)
+            {
+                RoverHighPriorityReceiver.Receive(p);
+            }
+            else
+            {
+                var count = (int)Math.Ceiling(p.Length / (double)fragmentSize);
+                for (var i = 1; i <= count; i++)
+                    RoverHighPriorityReceiver.Receive(new ImageFragment { APID = p.APID, Length = fragmentSize, FragmentNumber = i, TotalFragments = count, Packet = p, Timestamp = Model.Time });
             }
         }
     }
@@ -467,15 +515,17 @@ namespace Downlink
     {
         public Rover Rover;
         public int CommandCount = 0;
-        public void SendDriveCommand()
+        public int MaximumCommandCount = 10;
+        public virtual void SendDriveCommand()
         {
-            Message(@"Driver asked to send drive comomand");
-            if (CommandCount++ > 10)
+            if (CommandCount >= MaximumCommandCount)
             {
-                Message(@"The driver is ready to send command but stopping");
+                Message(@"Driver is ready by has exceeded max commands");
                 Model.StopRequest = true;
+                return;
             }
             Model.Message("Driver sends drive command");
+            CommandCount++;
             Enqueue(new Thunk(Model.Time + Model.UplinkLatency, () => Rover.Drive()));
         }
         public void EvalImage(Packet p)
@@ -488,5 +538,4 @@ namespace Downlink
                 Enqueue(new Thunk(Model.Time + Model.DriverDecisionTime, () => SendDriveCommand()));
         }
     }
-
 }
