@@ -13,7 +13,7 @@ namespace Downlink
         private Model _Model;
         public Model Model { get { return _Model; } set
             {
-                if (_Model!=null)
+                if (_Model != null)
                     _Model.Components.Remove(this);
                 _Model = value;
                 if (_Model != null && !_Model.Components.Contains(this))
@@ -358,7 +358,7 @@ namespace Downlink
 
     public class GroundSystem : Component, FrameReceiver
     {
-        public Driver Driver;
+        public MOSTeam Driver;
         public Rover Rover;
         public long TotalBytesReceived = 0L;
         public long TotalBytesInPackets = 0L;
@@ -411,6 +411,7 @@ namespace Downlink
 
         public void Handle(Packet packet)
         {
+            packet.Received = Model.Time;
             Packets.Add(packet);
             if (packet.APID == APID.RoverImagePair)
             {
@@ -422,19 +423,8 @@ namespace Downlink
                 var di = packet as DOCImage;
                 if (di == null) return;
                 Model.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
-                if (Model.TheCase == Model.ModelCase.ScienceStation && di.SequenceNumber == 3 && di.RoverPosition == Rover.Position)
-                {
-                    Model.Message("NIRVSS starts evaluating the final waypoint image");
-                    Enqueue(new Thunk(Model.Time + Model.NIRVSSEvalLatency, () =>
-                    {
-                        Model.Message("NIRVSS allows driver to send drive command");
-                        // NIRVSS communicates with Driver with 0 latency
-                        Driver.SendDriveCommand();
-                    }
-                    ));
-                }
+                Driver.EvalImage(packet);  // Driver is really MOS
             }
-
         }
     }
 
@@ -465,13 +455,13 @@ namespace Downlink
             IsDriving = false;
             Message("Rover stops driving");
             Position += Model.DriveStep;
-            EnqueueLongPacket(RoverHighPriorityReceiver, new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
+            EnqueueLongPacket(RoverImageReceiver, new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
 
             // DOC images are triggered in ModelDocGeneration
         }
 
         // Runs at .2 hz while driving and 1 hz when stopped
-        int _DocWaypointImageCount = 100;  // Start high so that waypoint images aren't generated for position 0
+        bool HaveSentDocWaypointImages = true;  // Don't send for first waypoint
         void ModelDocGeneration()
         {
             if (IsDriving)
@@ -479,18 +469,22 @@ namespace Downlink
                 var p = new DOCImage { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
                 EnqueueLongPacket(DOCHighPriorityReceiver, p);
                 //Message(@"  Sending driving doc image");
-                _DocWaypointImageCount = 0;
+                HaveSentDocWaypointImages = false;
                 Enqueue(Model.Time + 5f, ModelDocGeneration);
             }
             else
             {
-                if (_DocWaypointImageCount < 9)
+                if (!HaveSentDocWaypointImages)
                 {
-                    var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = _DocWaypointImageCount, RoverPosition = Position };
-                    var vc = _DocWaypointImageCount < 4 ? DOCHighPriorityReceiver : DOCLowPriorityReceiver;
-                    EnqueueLongPacket(vc, p);
-                    Message(@"  Sending waypoint doc image {0}", _DocWaypointImageCount);
-                    _DocWaypointImageCount++;
+                    const int CountOfDocImagesPerWaypoint = 4;
+                    for (var i = 0; i < CountOfDocImagesPerWaypoint; i++)
+                    {
+                        var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = i, RoverPosition = Position };
+                        var time = Model.Time + i;
+                        Enqueue(time, () => EnqueueLongPacket(DOCHighPriorityReceiver, p));
+                        Message(@"  Sending doc waypt img {0} at {1}", i, time);
+                    }
+                    HaveSentDocWaypointImages = true;
                 }
                 Enqueue(Model.Time + 1f, ModelDocGeneration);
             }
@@ -500,42 +494,124 @@ namespace Downlink
             const int fragmentSize = 4096;
             if (p.Length <= fragmentSize)
             {
-                RoverHighPriorityReceiver.Receive(p);
+                r.Receive(p);
             }
             else
             {
                 var count = (int)Math.Ceiling(p.Length / (double)fragmentSize);
                 for (var i = 1; i <= count; i++)
-                    RoverHighPriorityReceiver.Receive(new ImageFragment { APID = p.APID, Length = fragmentSize, FragmentNumber = i, TotalFragments = count, Packet = p, Timestamp = Model.Time });
+                    r.Receive(new ImageFragment { APID = p.APID, Length = fragmentSize, FragmentNumber = i, TotalFragments = count, Packet = p, Timestamp = Model.Time });
             }
         }
     }
 
-    public class Driver : Component
+    /// <summary>
+    /// This models the driver and the NIRVSS camera operators
+    /// </summary>
+    public class MOSTeam : Component
     {
         public Rover Rover;
         public int CommandCount = 0;
-        public int MaximumCommandCount = 10;
+        public int MaximumCommandCount = 4;
         public virtual void SendDriveCommand()
         {
             if (CommandCount >= MaximumCommandCount)
             {
-                Message(@"Driver is ready by has exceeded max commands");
-                Model.StopRequest = true;
+                Model.StopRequest(@"Driver is ready by has exceeded max commands");
                 return;
             }
             Model.Message("Driver sends drive command");
             CommandCount++;
-            Enqueue(new Thunk(Model.Time + Model.UplinkLatency, () => Rover.Drive()));
+            Enqueue(Model.Time + Model.UplinkLatency, () => Rover.Drive());
         }
+
+        float DriverProposedCommandTime = -1f;
+        bool WaitingForDriver => DriverProposedCommandTime < 0f;
+        float NirvssProposedCommandTime = -1f;
+        bool WaitingForNirvss => NirvssProposedCommandTime < 0f;
+
         public void EvalImage(Packet p)
         {
-            var ri = p as RoverImagePair;
-            if (ri == null)
-                throw new Exception("Received a rover image packet that wasn't of the proper type");
-            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
-            if (Model.TheCase == Model.ModelCase.Rails)
-                Enqueue(new Thunk(Model.Time + Model.DriverDecisionTime, () => SendDriveCommand()));
+            switch (Model.TheCase)
+            {
+                case Model.ModelCase.Rails:
+                    {
+                        if (p is RoverImagePair)
+                        {
+                            var ri = p as RoverImagePair;
+                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            // ProposedCommandTime is irrelevant in this case
+                            Enqueue(Model.Time + Model.DriverDecisionTime, () => SendDriveCommand());
+                        }
+                        break;
+                    }
+                case Model.ModelCase.AIM:
+                    {
+                        if (p is RoverImagePair)
+                        {
+                            var ri = p as RoverImagePair;
+                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            DriverMaybeSendCommand(Model.Time + Model.DriverDecisionTime);
+                        }
+                        else if (p is DOCImage)
+                        {
+                            var di = p as DOCImage;
+                            if (di.SequenceNumber == 3)
+                            {
+                                Model.Message("Nirvss starts image eval timestamp={0} pos={1}", di.Timestamp, di.RoverPosition);
+                                NirvssMaybeSendCommand(Model.Time + Model.DOCAIMDecisionTime);
+                            }
+                        }
+                        break;
+                    }
+                case Model.ModelCase.ScienceStation:
+                    {
+                        if (p is RoverImagePair)
+                        {
+                            var ri = p as RoverImagePair;
+                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            DriverMaybeSendCommand(Model.Time + Model.DriverDecisionTime);
+                        }
+                        else if (p is DOCImage)
+                        {
+                            var di = p as DOCImage;
+                            if (di.SequenceNumber == 3)
+                            {
+                                Model.Message("Nirvss starts image eval timestamp={0} pos={1}", di.Timestamp, di.RoverPosition);
+                                NirvssMaybeSendCommand(Model.Time + Model.DOCScienceDecisionTime);
+                            }
+                        }
+                        break; ;
+                    }
+            }
+        }
+
+        void DriverMaybeSendCommand(float driverTime)
+        {
+            if (!WaitingForDriver)
+                Model.StopImmediately(@"Drive received two images");
+            if (WaitingForNirvss)
+                DriverProposedCommandTime = driverTime;
+            else
+            {
+                var maxtime = Math.Max(driverTime, NirvssProposedCommandTime);
+                DriverProposedCommandTime = NirvssProposedCommandTime = -1f;
+                Enqueue(maxtime, () => SendDriveCommand());
+            }
+        }
+
+        void NirvssMaybeSendCommand(float nirvssTime)
+        {
+            if (!WaitingForNirvss)
+                Model.StopImmediately(@"Nirvss received two triggers");
+            if (WaitingForDriver)
+                NirvssProposedCommandTime = nirvssTime;
+            else
+            {
+                var maxtime = Math.Max(nirvssTime, DriverProposedCommandTime);
+                DriverProposedCommandTime = NirvssProposedCommandTime = -1f;
+                Enqueue(maxtime, () => SendDriveCommand());
+            }
         }
     }
 }

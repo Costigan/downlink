@@ -1,0 +1,7 @@
+Questions
+
+Configurations
+* Separate avionics payload
+  * 
+
+* Integrated avionics

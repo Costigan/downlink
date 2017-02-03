@@ -24,7 +24,7 @@ namespace Downlink
                 return;
             }
             var mtype = modelChoice.GetType();
-            var model = (Model)Activator.CreateInstance(mtype);
+            var model = (SharedModel)Activator.CreateInstance(mtype);
             model.PrintMessages = cbPrintMessages.Checked;
             model.PrintReport = cbPrintMessages.Checked;
 
@@ -36,7 +36,7 @@ namespace Downlink
                 FillReport(model);
         }
 
-        private void FillReport(Model m)
+        private void FillReport(SharedModel m)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -46,13 +46,11 @@ namespace Downlink
             }
             txtEvents.Text = sb.ToString();
 
-            sb = new StringBuilder();
-            using (var sw = new StringWriter(sb))
+            using (var sw = new StringWriter())
             {
-                foreach (var line in m.ReportMessages)
-                    sw.WriteLine(line);
+                m.Stats.Report(sw);
+                txtReport.Text = sw.ToString();
             }
-            txtReport.Text = sb.ToString();
         }
 
         private void RunModel_Load(object sender, EventArgs e)
@@ -164,6 +162,7 @@ namespace Downlink
         private void btnRateVsDrops_Click(object sender, EventArgs e)
         {
             var m = new SingleMultiplexor { PrintMessages = false, PrintReport = false };
+            m.Build();
             m.Start();
             zed2.GraphPane.CurveList.Clear();
             var max = m.FrameGenerator.Buffers.Count;

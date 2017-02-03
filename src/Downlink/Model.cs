@@ -26,6 +26,8 @@ namespace Downlink
         public float GDSLatency = 0f;  // for now
 
         public float DriverDecisionTime = 90f;
+        public float DOCAIMDecisionTime = 0f;
+        public float DOCScienceDecisionTime = 30f;
 
         private float _DownlinkRate = 100000f;
         public float DownlinkRate
@@ -88,6 +90,8 @@ namespace Downlink
 
         public List<Sample> StateSamples = new List<Sample>();
 
+        public NullReceiver DevNull = new NullReceiver();
+
         #endregion
 
         #region Model State Variables
@@ -97,8 +101,6 @@ namespace Downlink
 
         public SimplePriorityQueue<Event, float> EventQueue = new SimplePriorityQueue<Event, float>();
         public float Time = 0f;
-
-        public bool StopRequest = false;
 
         public const int RoverHighPriorityVC = 0;
         public const int RoverLowPriorityVC = 0;
@@ -110,7 +112,7 @@ namespace Downlink
 
         // Components in all models
 
-        public enum ModelCase { Rails, ScienceStation }
+        public enum ModelCase { Rails, AIM, ScienceStation }
         public ModelCase TheCase = ModelCase.Rails;
 
         #endregion
@@ -135,12 +137,19 @@ namespace Downlink
         {
             foreach (var c in Components) c.Start();
         }
-        public virtual void Stop() { }
+        public virtual void Stop()
+        {
+            Message("Stop simulation");
+            GenerateStats();
+        }
+
+        public virtual void GenerateStats() { }
+
         public virtual void GenerateFrame() { }
 
         public virtual void Loop()
         {
-            while (!StopRequest && EventQueue.Count > 0)
+            while (!_StopRequest && EventQueue.Count > 0)
             {
                 var evt = EventQueue.Dequeue();
                 Time = evt.Time;
@@ -186,6 +195,22 @@ namespace Downlink
         public void Enqueue(float t, Action a) { EventQueue.Enqueue(new Thunk(t, a), t); }
         public void Enqueue(Event e) { EventQueue.Enqueue(e, e.Time); }
 
+        protected bool _StopRequest = false;
+        public void StopRequest(string msg, params object[] args)
+        {
+            Message(@"****************");
+            Message(msg, args);
+            _StopRequest = true;
+        }
+
+        public void StopImmediately(string msg, params object[] args)
+        {
+            Message(@"****************");
+            Message(msg, args);
+            EventQueue = new SimplePriorityQueue<Event, float>();
+            _StopRequest = true;
+        }
+
         public void Message(string msg, params object[] args)
         {
             var msg1 = string.Format(msg, args);
@@ -222,26 +247,12 @@ namespace Downlink
 
         public static bool MatchingAPID(APID pattern, APID concrete) => pattern == APID.AllAPIDS || pattern == concrete;
 
-        public virtual void PacketsInFlight(APID apid, out int packetCount, out int byteCount)
+        public virtual void PacketsInFlight(APID apid, ref int packetCount, ref int byteCount)
         {
             packetCount = byteCount = 0;
         }
 
-        public virtual void PacketReport(IEnumerable<Packet> packets, string title)
-        {
-            var lst = packets.ToList();
-            var packetCount = lst.Count;
-            var averageLatency = lst.SafeAverage(p => p.Latency);
-            var latencyStdDev = lst.StandardDeviation(p => p.Latency);
-            var min = lst.SafeMin(p => p.Latency);
-            var max = lst.SafeMax(p => p.Latency);
-            Report(@"Packet Report for {0}", title);
-            Report(@"  {0} packets were received", packetCount);
-            Report(@"  latency min,avg,max = [{0:F3}, {1:F3}, {2:F3}] sec", min, averageLatency, max);
-            Report(@"  latency stddev = {0:F3} sec", latencyStdDev);
-        }
-
-        public void PacketsInFlight(APID apid, Frame f, ref int packetCount, ref int byteCount)
+        public virtual void PacketsInFlight(APID apid, Frame f, ref int packetCount, ref int byteCount)
         {
             if (f == null) return;
             foreach (var pf in f.Fragments)
@@ -254,7 +265,7 @@ namespace Downlink
             }
         }
 
-        public void PacketsInFlight(APID apid, PacketQueue q, ref int packetCount, ref int byteCount)
+        public virtual void PacketsInFlight(APID apid, PacketQueue q, ref int packetCount, ref int byteCount)
         {
             q.PacketsInFlight(apid, ref packetCount, ref byteCount);
         }
@@ -282,5 +293,67 @@ namespace Downlink
 
         #endregion
 
+        public class NullReceiver : PacketReceiver
+        {
+            public bool Receive(Packet p) { return true; }
+        }
     }
+
+    public class SharedModel : Model
+    {
+        public Rover Rover;
+        public MOSTeam MOS;
+        public FrameGenerator FrameGenerator;
+        public GroundSystem GroundSystem;
+        public PacketGenerator RoverHighPacketGenerator, PayloadHighPacketGenerator;
+        public ModelStats Stats;
+
+        public override void GenerateStats()
+        {
+            base.GenerateStats();
+            Stats = Activator.CreateInstance<ModelStats>();
+            Stats.Name = GetType().ToString();
+            Stats.DriveCommandCount = MOS.CommandCount;
+            Stats.PacketCount = GroundSystem.Packets.Count;
+            Stats.DownlinkRate = DownlinkRate;
+            Stats.FinalPosition = Rover.Position;
+            Stats.FinalTime = Time;
+            Stats.SpeedMadeGood = 100f * Rover.Position / Time;
+            Stats.TotalFrameCount = GroundSystem.FrameCount;
+            Stats.FrameCountPerVC = GroundSystem.FrameCounter;
+            Stats.PacketDropCountPerVC = FrameGenerator.Buffers.Select(c => (long)c.PacketQueue.DropCount).ToArray();
+            Stats.ByteDropCountPerVC = FrameGenerator.Buffers.Select(c => (long)c.PacketQueue.ByteDropCount).ToArray();
+            Stats.TotalBytesReceivedInFrames = GroundSystem.TotalBytesReceived;
+            Stats.TotalBytesReceivedInPackets = GroundSystem.TotalBytesInPackets;
+            Stats.BandwidthEfficiency = GroundSystem.TotalBytesInPackets / (float)GroundSystem.TotalBytesReceived;
+            Stats.TotalBytesAvailable = (long)(Time * DownlinkRate / 8f);
+            Stats.PacketReportForAllPackets = Stats.GetPacketReport(GroundSystem.Packets);
+            Stats.PacketReportByAPID = new Dictionary<APID, PacketReport>();
+            foreach (var a in Enum.GetValues(typeof(APID)))
+                Stats.PacketReportByAPID.Add((APID)a, Stats.GetPacketReport(GroundSystem.Packets.Where(p => (APID)a == p.APID))); ;
+            Stats.TotalBytesInFlight = 1;
+            Stats.PacketsInFlightByAPID = new Dictionary<APID, int>();
+            Stats.BytesInFlightByAPID = new Dictionary<APID, int>();
+            foreach (var a in Enum.GetValues(typeof(APID)))
+            {
+                int packetCount = 0, byteCount = 0;
+                PacketsInFlight((APID)a, ref packetCount, ref byteCount);
+                Stats.PacketsInFlightByAPID.Add((APID)a, packetCount);
+                Stats.BytesInFlightByAPID.Add((APID)a, byteCount);
+            }
+            Stats.TotalPacketsInFlight = Stats.PacketsInFlightByAPID.Values.Sum();
+        }
+
+        public override void PacketsInFlight(APID apid, ref int packetCount, ref int byteCount)
+        {
+            base.PacketsInFlight(apid, ref packetCount, ref byteCount);
+            foreach (var vc in FrameGenerator.Buffers)
+            {
+                PacketsInFlight(apid, vc.Frame, ref packetCount, ref byteCount);
+                PacketsInFlight(apid, vc.PacketQueue, ref packetCount, ref byteCount);
+            }
+            PacketsInFlight(apid, EventQueue, ref packetCount, ref byteCount);
+        }
+    }
+
 }
