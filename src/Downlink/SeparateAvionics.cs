@@ -12,24 +12,51 @@ namespace Downlink
 
         public SeparateAvionics()
         {
-            TheCase = ModelCase.Rails;
+            TheCase = ModelCase.RailsDriving;
+        }
+
+        Dictionary<Tuple<int, float, float, float, float>, dynamic> _calculationCache = new Dictionary<Tuple<int, float, float, float, float>, dynamic>();
+        public dynamic CachedCalculate(ModelCase mcase, float downlinkRate, float payloadBitRate, float driverDecisionTime, float scienceDecisionTime)
+        {
+            var tuple = Tuple.Create((int)mcase, downlinkRate, payloadBitRate, driverDecisionTime, scienceDecisionTime);
+            dynamic val;
+            if (_calculationCache.TryGetValue(tuple, out val))
+                return val;
+            val = Calculate(mcase, downlinkRate, payloadBitRate, driverDecisionTime, scienceDecisionTime);
+            _calculationCache[tuple] = val;
+            return val;
+        }
+
+        public dynamic Calculate(ModelCase mcase, float downlinkRate, float payloadBitRate, float driverDecisionTime, float scienceDecisionTime)
+        {
+            if (!IsBuilt) Build();
+            TheCase = mcase;
+            DownlinkRate = downlinkRate;
+            PayloadAvionics.BitRate = payloadBitRate;
+            DriverDecisionTime = driverDecisionTime;
+            DOCScienceDecisionTime = scienceDecisionTime;
+            Reset();
+            RunInternal();
+            //Console.Write('.');
+            return (dynamic)Stats;
         }
 
         public override void Build()
         {
+            base.Build();
             // Create the components
             Rover = new Rover { Model = this, RoverImageVC = RoverImageVC };
             MOS = new MOSTeam { Model = this, };
             GroundSystem = new GroundSystem { Model = this, };
 
-            FrameGenerator = new FrameGenerator { Model = this, DownlinkRate = DownlinkRate };
+            FrameGenerator = new FrameGenerator { Model = this };
             PayloadAvionics = new PriorityPacketQueue { Model = this, BitRate = 40000f };
-            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // high pri
-            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc high pri
-            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = 100 });  // doc  other
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = DefaultPacketQueueSize });  // high pri
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = DefaultPacketQueueSize });  // doc high pri
+            PayloadAvionics.AddQueue(new PacketQueue { Model = this, Owner = PayloadAvionics, Size = DefaultPacketQueueSize });  // doc  other
 
             RoverHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.RoverHealth, BitsPerSecond = RoverHealthBitsPerSecond, PacketSize = 100, StartTimeOffset = 0f };
-            PayloadHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.PayloadGeneral, BitsPerSecond = PayloadWithoutDOCBitsPerSecond, PacketSize = 100, StartTimeOffset = 0.1f };
+            PayloadHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.PayloadHealth, BitsPerSecond = PayloadWithoutDOCBitsPerSecond, PacketSize = 100, StartTimeOffset = 0.1f };
 
             // Link the objects together
             FrameGenerator.GroundSystem = GroundSystem;
@@ -81,9 +108,13 @@ namespace Downlink
     }
 
     public class SeparateAvionicsRails : SeparateAvionics { }
+    public class SeparateAvionicsAIM : SeparateAvionics
+    {
+        public SeparateAvionicsAIM() { TheCase = ModelCase.AIMDriving; }
+    }
     public class SeparateAvionicsScience : SeparateAvionics
     {
-        public SeparateAvionicsScience() { TheCase = ModelCase.ScienceStation; }
+        public SeparateAvionicsScience() { TheCase = ModelCase.ScienceDriving; }
     }
 
     public class SeparateAvionicsRailsSingleMove : SeparateAvionics

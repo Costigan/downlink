@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using APID = Downlink.Model.APID;
 
 namespace Downlink
 {
@@ -23,6 +20,7 @@ namespace Downlink
         public virtual void Build() { }
         public virtual void Start() { }
         public virtual void Stop() { }
+        public virtual void Reset() { }
 
         public void Message(string msg, params object[] args)
         {
@@ -66,6 +64,11 @@ namespace Downlink
             Time += Delay;
             m.Enqueue(this);
         }
+        public override void Reset()
+        {
+            base.Reset();
+            Time = 0f;
+        }
     }
 
     /// <summary>
@@ -84,7 +87,7 @@ namespace Downlink
         public PacketQueueOwner Owner = null;
         public int DropCount = 0;
         public int ByteDropCount = 0;
-        public int Size;
+        public int Size = 200;
         public int Count => Queue.Count + Stack.Count;
         public bool IsEmpty => Count == 0;
         public int ByteCount;
@@ -103,6 +106,13 @@ namespace Downlink
             {
                 DropCount++;
                 ByteDropCount += p.Length;
+                {
+                    if (p.IsImagePacket)
+                    {
+                        ImagePacket p1 = (ImagePacket)((p is ImageFragment) ? (p as ImageFragment).Packet : p);
+                        Console.WriteLine(@"** Dropping {0} image packet.  Part of seqnum={1}", p1.APID, p1.SequenceNumber);
+                    }
+                }
             }
             return true;
         }
@@ -117,7 +127,7 @@ namespace Downlink
             if (p != null) ByteCount -= p.Length;
             return p;
         }
-        public void PacketsInFlight(Model.APID pattern, ref int packetCount, ref int byteCount)
+        public void PacketsInFlight(APID pattern, ref int packetCount, ref int byteCount)
         {
             var a = Queue.ToArray();
             for (var i = 0; i < a.Length; i++)
@@ -135,6 +145,12 @@ namespace Downlink
                 packetCount++;
                 byteCount += a[i].Length;
             }
+        }
+        public override void Reset()
+        {
+            Queue = new Queue<Packet>();
+            Stack = new Stack<Packet>();
+            DropCount = ByteDropCount = ByteCount = 0;
         }
     }
 
@@ -194,6 +210,14 @@ namespace Downlink
             if (Owner != null)
                 Owner.WakeUp();
         }
+        public override void Reset()
+        {
+            base.Reset();
+            Time = 0f;
+            OutputPacket = null;
+            foreach (var q in Queues)
+                q.Reset();
+        }
     }
 
     public class VirtualChannelBuffer : Component, PacketReceiver, PacketQueueOwner
@@ -213,6 +237,8 @@ namespace Downlink
             if (Owner != null) Owner.WakeUp();
             return PacketQueue.Receive(p);
         }
+        public int Count => _PacketQueue == null ? 0 : _PacketQueue.Count;
+
         public Frame TryToFillFrame()
         {
             if (Frame == null)
@@ -264,6 +290,13 @@ namespace Downlink
         {
             WakeupTime = Model.Time + Timeout;
         }
+        public override void Reset()
+        {
+            base.Reset();
+            Frame = null;
+            PacketQueue.Reset();
+            WakeupTime = 0f;
+        }
     }
 
     public class FrameGenerator : Component, Event, PacketQueueOwner
@@ -273,19 +306,10 @@ namespace Downlink
         public float Time { get; set; } = 0f;
         public List<VirtualChannelBuffer> Buffers = new List<VirtualChannelBuffer>();
         public GroundSystem GroundSystem;
-        public float FrameLatency = Model.RP15FrameLength * 8 / 100000f;  // init value
-        public float DownlinkLatency = 10f + 1.3f + Model.RP15FrameLength * 8 / 100000f;  // init value
-        public float _DownlinkRate = 100000f;
-        public float DownlinkRate
-        {
-            get { return _DownlinkRate; }
-            set
-            {
-                _DownlinkRate = value;
-                FrameLatency = Model.RP15FrameLength * 8 / _DownlinkRate;
-                DownlinkLatency = 10f + 1.3f + FrameLatency;
-            }
-        }
+        public float FrameLatency => Model.FrameLatency;  // init value
+        public float DownlinkLatency =>Model.DownlinkLatency;  // init value
+        public float DownlinkRate => Model.DownlinkLatency;
+        public int Count => Buffers.Sum(b => b.Count);
         public override void Build()
         {
             foreach (var b in Buffers) { b.Build(); }
@@ -354,6 +378,12 @@ namespace Downlink
             return new Frame { VirtualChannel = Model.IdleVC };  // Idle Frame
         }
         public void WakeUp() { }
+        public override void Reset()
+        {
+            base.Reset();
+            Time = 0f;
+            foreach (var b in Buffers) b.Reset();
+        }
     }
 
     public class GroundSystem : Component, FrameReceiver
@@ -368,9 +398,6 @@ namespace Downlink
         public List<Packet> Packets = new List<Packet>();
         public List<Packet> ImagesSeen = new List<Packet>(); // all images that any part of has been received
 
-        //mhs
-        private List<Frame> FramesSeen = new List<Frame>();
-
         public void Receive(Frame f)
         {
             //mhs
@@ -378,7 +405,6 @@ namespace Downlink
             //    Console.WriteLine("here");
             //FramesSeen.Add(f);
             //Message("Received frame from VC{0}", f.VirtualChannel);
-
             FrameCount++;
             FrameCounter[f.VirtualChannel]++;
             TotalBytesReceived += Model.RP15FrameLength;
@@ -411,20 +437,36 @@ namespace Downlink
 
         public void Handle(Packet packet)
         {
-            packet.Received = Model.Time;
             Packets.Add(packet);
-            if (packet.APID == APID.RoverImagePair)
+            packet.Received = Model.Time;
+            if (packet.Latency < 0f)
+                Console.WriteLine(@"Packet traveled back in time");
+            if (!packet.IsImagePacket)
+                return;
+            var p = packet as ImagePacket;
+            Debug.Assert(p != null);
+            switch (packet.APID)
             {
-                Message(@"Received RoverImagePair timestamp={0}", packet.Timestamp);
-                Driver.EvalImage(packet);
+                case APID.RoverImagePair:
+                        Message(@"Received RoverImagePair time={0} seq={1} pos={2}", p.Timestamp, p.SequenceNumber, p.RoverPosition);
+                        Driver.EvalImage(packet);
+                    break;
+                case APID.DOCProspectingImage:
+                    //Message(@"Received DOCProspectingImage time={0} seq={1} pos={2}", p.Timestamp, p.SequenceNumber, p.RoverPosition);
+                    break;
+                case APID.DOCWaypointImage:
+                    Message(@"Received DOCWaypointImage time={0} seq={1} pos={2}", p.Timestamp, p.SequenceNumber, p.RoverPosition);
+                    Driver.EvalImage(packet);
+                    break;
             }
-            if (packet.APID == APID.DOCWaypointImage)
-            {
-                var di = packet as DOCImage;
-                if (di == null) return;
-                Model.Message("Received DOC Waypoint image seq={0}", di.SequenceNumber);  // Bug: This should be the last of 4, not any DOC Waypoint image
-                Driver.EvalImage(packet);  // Driver is really MOS
-            }
+        }
+        public override void Reset()
+        {
+            base.Reset();
+            TotalBytesReceived = TotalBytesInPackets = FrameCount = 0L;
+            Array.Clear(FrameCounter,0,FrameCounter.Length);
+            Packets.Clear();
+            ImagesSeen.Clear();
         }
     }
 
@@ -450,23 +492,24 @@ namespace Downlink
             var delta = Model.DriveStep / Model.DriveSpeed;
             Enqueue(Model.Time + delta, () => StopDriving());
         }
+        int _roverImageSeqnum = 0;
         public void StopDriving()
         {
             IsDriving = false;
             Message("Rover stops driving");
             Position += Model.DriveStep;
-            EnqueueLongPacket(RoverImageReceiver, new RoverImagePair { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position });
-
+            EnqueueLongPacket(RoverImageReceiver, new ImagePacket { APID = APID.RoverImagePair, Length = Model.NavPayload, Timestamp = Model.Time, RoverPosition = Position, SequenceNumber = ++_roverImageSeqnum });
             // DOC images are triggered in ModelDocGeneration
         }
 
         // Runs at .2 hz while driving and 1 hz when stopped
         bool HaveSentDocWaypointImages = true;  // Don't send for first waypoint
+        int _docImageSequenceNumber = 0;
         void ModelDocGeneration()
         {
             if (IsDriving)
             {
-                var p = new DOCImage { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time };
+                var p = new ImagePacket { APID = APID.DOCProspectingImage, Length = Model.DOCLowContrastNarrow, Timestamp = Model.Time, SequenceNumber = (++_docImageSequenceNumber) };
                 EnqueueLongPacket(DOCHighPriorityReceiver, p);
                 //Message(@"  Sending driving doc image");
                 HaveSentDocWaypointImages = false;
@@ -479,10 +522,18 @@ namespace Downlink
                     const int CountOfDocImagesPerWaypoint = 4;
                     for (var i = 0; i < CountOfDocImagesPerWaypoint; i++)
                     {
-                        var p = new DOCImage { APID = APID.DOCWaypointImage, Length = Model.DOCAllLEDScale3, Timestamp = Model.Time, SequenceNumber = i, RoverPosition = Position };
+                        var p = new ImagePacket
+                        {
+                            APID = APID.DOCWaypointImage,
+                            Length = Model.DOCAllLEDScale3,
+                            Timestamp = Model.Time,
+                            SequenceNumber = (++_docImageSequenceNumber),
+                            IsLastDocWaypointImage = i == 3,
+                            RoverPosition = Position
+                        };
                         var time = Model.Time + i;
                         Enqueue(time, () => EnqueueLongPacket(DOCHighPriorityReceiver, p));
-                        Message(@"  Sending doc waypt img {0} at {1}", i, time);
+                        Message(@"  Sending doc waypt img {0} at {1}", p.SequenceNumber, time);
                     }
                     HaveSentDocWaypointImages = true;
                 }
@@ -498,10 +549,46 @@ namespace Downlink
             }
             else
             {
+                const float fragmentDelay = 0f;
                 var count = (int)Math.Ceiling(p.Length / (double)fragmentSize);
                 for (var i = 1; i <= count; i++)
-                    r.Receive(new ImageFragment { APID = p.APID, Length = fragmentSize, FragmentNumber = i, TotalFragments = count, Packet = p, Timestamp = Model.Time });
+                    r.Receive(new ImageFragment
+                    {
+                        APID = p.APID,
+                        Length = fragmentSize,
+                        FragmentNumber = i,
+                        TotalFragments = count,
+                        Packet = p,
+                        Timestamp = Model.Time
+                    });
+                /*
+                var p1 = p;
+                var r1 = r;
+                for (var i = 1; i <= count; i++)
+                    Enqueue(
+                        Model.Time + i * fragmentDelay,
+                   () =>
+                   {
+                       var f = new ImageFragment
+                       {
+                           APID = p1.APID,
+                           Length = fragmentSize,
+                           FragmentNumber = i,
+                           TotalFragments = count,
+                           Packet = p1,
+                           Timestamp = Model.Time
+                       };
+                       Console.WriteLine(@"Enqueuing apid={0} fn={1} tot={2}", f.APID, f.FragmentNumber, f.TotalFragments);
+                       r1.Receive(f);
+                   });*/
             }
+        }
+        public override void Reset()
+        {
+            base.Reset();
+            RoverImageVC = -1;
+            IsDriving = false;
+            Position = 0f;
         }
     }
 
@@ -534,54 +621,54 @@ namespace Downlink
         {
             switch (Model.TheCase)
             {
-                case Model.ModelCase.Rails:
+                case ModelCase.RailsDriving:
                     {
-                        if (p is RoverImagePair)
+                        if (p.APID==APID.RoverImagePair)
                         {
-                            var ri = p as RoverImagePair;
-                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            var ri = p as ImagePacket;
+                            Model.Message("Driver starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                             // ProposedCommandTime is irrelevant in this case
                             Enqueue(Model.Time + Model.DriverDecisionTime, () => SendDriveCommand());
                         }
                         break;
                     }
-                case Model.ModelCase.AIM:
+                case ModelCase.AIMDriving:
                     {
-                        if (p is RoverImagePair)
+                        if (p.APID == APID.RoverImagePair)
                         {
-                            var ri = p as RoverImagePair;
-                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            var ri = p as ImagePacket;
+                            Model.Message("Driver starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                             DriverMaybeSendCommand(Model.Time + Model.DriverDecisionTime);
                         }
-                        else if (p is DOCImage)
+                        else if (p.APID == APID.DOCWaypointImage)
                         {
-                            var di = p as DOCImage;
-                            if (di.SequenceNumber == 3)
+                            var ri = p as ImagePacket;
+                            if (ri.IsLastDocWaypointImage)
                             {
-                                Model.Message("Nirvss starts image eval timestamp={0} pos={1}", di.Timestamp, di.RoverPosition);
+                                Model.Message("Nirvss starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                                 NirvssMaybeSendCommand(Model.Time + Model.DOCAIMDecisionTime);
                             }
                         }
                         break;
                     }
-                case Model.ModelCase.ScienceStation:
+                case ModelCase.ScienceDriving:
                     {
-                        if (p is RoverImagePair)
+                        if (p.APID == APID.RoverImagePair)
                         {
-                            var ri = p as RoverImagePair;
-                            Model.Message("Driver starts image eval timestamp={0} pos={1}", ri.Timestamp, ri.RoverPosition);
+                            var ri = p as ImagePacket;
+                            Model.Message("Driver starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                             DriverMaybeSendCommand(Model.Time + Model.DriverDecisionTime);
                         }
-                        else if (p is DOCImage)
+                        else if (p.APID == APID.DOCWaypointImage)
                         {
-                            var di = p as DOCImage;
-                            if (di.SequenceNumber == 3)
+                            var ri = p as ImagePacket;
+                            if (ri.SequenceNumber == 4)
                             {
-                                Model.Message("Nirvss starts image eval timestamp={0} pos={1}", di.Timestamp, di.RoverPosition);
+                                Model.Message("Nirvss starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                                 NirvssMaybeSendCommand(Model.Time + Model.DOCScienceDecisionTime);
                             }
                         }
-                        break; ;
+                        break;
                     }
             }
         }
@@ -612,6 +699,11 @@ namespace Downlink
                 DriverProposedCommandTime = NirvssProposedCommandTime = -1f;
                 Enqueue(maxtime, () => SendDriveCommand());
             }
+        }
+        public override void Reset()
+        {
+            base.Reset();
+            CommandCount = 0;
         }
     }
 }

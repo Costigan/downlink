@@ -91,12 +91,13 @@ namespace Downlink
 
     public class Packet
     {
-        public Model.APID APID { get; set; }
+        public APID APID { get; set; }
         public int Length { get; set; }
         public float Timestamp { get; set; }
         public float Received { get; set; }
         public float Latency => Received - Timestamp;
         public override string ToString() => "<packet apid=" + APID + " timestamp=" + Timestamp + ">";
+        public bool IsImagePacket => APID == APID.RoverImagePair || APID == APID.DOCProspectingImage || APID == APID.DOCWaypointImage;
     }
 
     /// <summary>
@@ -140,14 +141,10 @@ namespace Downlink
         }
     }
 
-    public class RoverImagePair : Packet
-    {
-        public float RoverPosition { get; set; }
-    }
-
-    public class DOCImage : Packet
+    public class ImagePacket  : Packet
     {
         public float RoverPosition { get; set; }
         public int SequenceNumber { get; set; }
+        public bool IsLastDocWaypointImage = false;
     }
 }

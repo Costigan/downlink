@@ -36,6 +36,14 @@
             this.txtReport = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.btnScience = new System.Windows.Forms.Button();
+            this.btnRails = new System.Windows.Forms.Button();
+            this.numDownlink = new System.Windows.Forms.NumericUpDown();
+            this.numTestPldSpeed = new System.Windows.Forms.NumericUpDown();
+            this.button2 = new System.Windows.Forms.Button();
+            this.btnAIM = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.lbModel = new System.Windows.Forms.ListBox();
             this.cbPrintMessages = new System.Windows.Forms.CheckBox();
@@ -57,6 +65,9 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.panel1.SuspendLayout();
+            this.groupBox3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numDownlink)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numTestPldSpeed)).BeginInit();
             this.groupBox4.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabReports.SuspendLayout();
@@ -142,6 +153,7 @@
             // 
             // panel1
             // 
+            this.panel1.Controls.Add(this.groupBox3);
             this.panel1.Controls.Add(this.groupBox4);
             this.panel1.Controls.Add(this.cbPrintMessages);
             this.panel1.Controls.Add(this.btnRun);
@@ -151,12 +163,112 @@
             this.panel1.Size = new System.Drawing.Size(234, 667);
             this.panel1.TabIndex = 5;
             // 
+            // groupBox3
+            // 
+            this.groupBox3.Controls.Add(this.btnScience);
+            this.groupBox3.Controls.Add(this.btnRails);
+            this.groupBox3.Controls.Add(this.numDownlink);
+            this.groupBox3.Controls.Add(this.numTestPldSpeed);
+            this.groupBox3.Controls.Add(this.button2);
+            this.groupBox3.Controls.Add(this.btnAIM);
+            this.groupBox3.Controls.Add(this.button1);
+            this.groupBox3.Location = new System.Drawing.Point(12, 312);
+            this.groupBox3.Name = "groupBox3";
+            this.groupBox3.Size = new System.Drawing.Size(200, 217);
+            this.groupBox3.TabIndex = 7;
+            this.groupBox3.TabStop = false;
+            this.groupBox3.Text = "Separate Avionics";
+            // 
+            // btnScience
+            // 
+            this.btnScience.Location = new System.Drawing.Point(3, 96);
+            this.btnScience.Name = "btnScience";
+            this.btnScience.Size = new System.Drawing.Size(82, 23);
+            this.btnScience.TabIndex = 12;
+            this.btnScience.Text = "Science";
+            this.btnScience.UseVisualStyleBackColor = true;
+            this.btnScience.Click += new System.EventHandler(this.btnScience_Click);
+            // 
+            // btnRails
+            // 
+            this.btnRails.Location = new System.Drawing.Point(3, 70);
+            this.btnRails.Name = "btnRails";
+            this.btnRails.Size = new System.Drawing.Size(38, 23);
+            this.btnRails.TabIndex = 11;
+            this.btnRails.Text = "Rails";
+            this.btnRails.UseVisualStyleBackColor = true;
+            this.btnRails.Click += new System.EventHandler(this.btnRails_Click);
+            // 
+            // numDownlink
+            // 
+            this.numDownlink.Location = new System.Drawing.Point(134, 70);
+            this.numDownlink.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.numDownlink.Name = "numDownlink";
+            this.numDownlink.Size = new System.Drawing.Size(60, 20);
+            this.numDownlink.TabIndex = 10;
+            this.numDownlink.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            // 
+            // numTestPldSpeed
+            // 
+            this.numTestPldSpeed.Location = new System.Drawing.Point(134, 96);
+            this.numTestPldSpeed.Maximum = new decimal(new int[] {
+            10000,
+            0,
+            0,
+            0});
+            this.numTestPldSpeed.Name = "numTestPldSpeed";
+            this.numTestPldSpeed.Size = new System.Drawing.Size(60, 20);
+            this.numTestPldSpeed.TabIndex = 10;
+            this.numTestPldSpeed.Value = new decimal(new int[] {
+            40,
+            0,
+            0,
+            0});
+            // 
+            // button2
+            // 
+            this.button2.Location = new System.Drawing.Point(6, 135);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(170, 23);
+            this.button2.TabIndex = 9;
+            this.button2.Text = "Compare Modes";
+            this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
+            // 
+            // btnAIM
+            // 
+            this.btnAIM.Location = new System.Drawing.Point(47, 70);
+            this.btnAIM.Name = "btnAIM";
+            this.btnAIM.Size = new System.Drawing.Size(38, 23);
+            this.btnAIM.TabIndex = 8;
+            this.btnAIM.Text = "AIM";
+            this.btnAIM.UseVisualStyleBackColor = true;
+            this.btnAIM.Click += new System.EventHandler(this.btnAIM_Click);
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(6, 19);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(170, 23);
+            this.button1.TabIndex = 7;
+            this.button1.Text = "Vary downlink && pld rate";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click_2);
+            // 
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.lbModel);
             this.groupBox4.Location = new System.Drawing.Point(12, 64);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(216, 425);
+            this.groupBox4.Size = new System.Drawing.Size(216, 242);
             this.groupBox4.TabIndex = 4;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Choose one Model";
@@ -167,7 +279,7 @@
             this.lbModel.FormattingEnabled = true;
             this.lbModel.Location = new System.Drawing.Point(3, 16);
             this.lbModel.Name = "lbModel";
-            this.lbModel.Size = new System.Drawing.Size(210, 406);
+            this.lbModel.Size = new System.Drawing.Size(210, 223);
             this.lbModel.TabIndex = 3;
             // 
             // cbPrintMessages
@@ -332,6 +444,9 @@
             this.splitContainer1.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
+            this.groupBox3.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.numDownlink)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numTestPldSpeed)).EndInit();
             this.groupBox4.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
             this.tabReports.ResumeLayout(false);
@@ -369,6 +484,14 @@
         private System.Windows.Forms.Button btnRateVsDrops;
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.ListBox lbModel;
+        private System.Windows.Forms.GroupBox groupBox3;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnAIM;
+        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.NumericUpDown numTestPldSpeed;
+        private System.Windows.Forms.Button btnScience;
+        private System.Windows.Forms.Button btnRails;
+        private System.Windows.Forms.NumericUpDown numDownlink;
     }
 }
 

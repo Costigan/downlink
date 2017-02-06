@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -34,6 +35,8 @@ namespace Downlink
 
             if (!cbPrintMessages.Checked)
                 FillReport(model);
+            if (cbPrintMessages.Checked)
+                PrintReport(model);
         }
 
         private void FillReport(SharedModel m)
@@ -53,6 +56,11 @@ namespace Downlink
             }
         }
 
+        private void PrintReport(SharedModel m)
+        {
+            m.Stats.Report(Console.Out);
+        }
+
         private void RunModel_Load(object sender, EventArgs e)
         {
             lbModel.Items.AddRange(
@@ -61,6 +69,7 @@ namespace Downlink
                     new SingleMultiplexorRails(),
                     new SingleMultiplexorScience(),
                     new SeparateAvionicsRails(),
+                    new SeparateAvionicsAIM(),
                     new SeparateAvionicsScience(),
                     new SeparateAvionicsRailsSingleMove()
                 }
@@ -189,6 +198,103 @@ namespace Downlink
             zed2.ZoomOutAll(zed2.GraphPane);
             zed2.GraphPane.AxisChange();
             zed2.Invalidate();
+        }
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            var m = new SeparateAvionics();
+            var stats = m.Calculate(ModelCase.RailsDriving, 10000f, 30000f, 90f, 30f);
+            Console.WriteLine(stats.SpeedMadeGood);
+        }
+
+        SeparateAvionics _model = new SeparateAvionics();
+        private void button1_Click_2(object sender, EventArgs e)
+        {
+            var downlinkRates = Enumerable.Range(0, 25).Select(i => 100000f + 20000f * i).ToArray();
+            //var downlinkRates = new[] { 100000f, 100000f, 100000f, 100000f };
+            foreach (var d in downlinkRates)
+                Console.Write("{0}\t", d);
+            Console.WriteLine();
+
+            ///var payloadRates = Enumerable.Range(0, 10).Select(i => 2 * i * 10000f).ToArray();
+            var payloadRates = new[] { 30000 };
+            foreach (var d in payloadRates)
+                Console.Write("{0}\t", d);
+            Console.WriteLine();
+
+            //var payloadRates = new[] { 30000 };
+            var table = downlinkRates.Select(r =>
+                payloadRates.Select(p =>
+                {
+                    return _model.CachedCalculate(ModelCase.RailsDriving, r, p, 90f, 30f).SpeedMadeGood;
+                    //return m.Calculate(r, p, 90f, 30f).SpeedMadeGood;
+                }).ToArray()).ToArray();
+            foreach (var a in table)
+            {
+                foreach (var v in a) Console.Write("{0}\t", v);
+                Console.WriteLine();
+            }
+        }
+
+        IEnumerable<float> Table(float start, float stop, float step)
+        {
+            for (var v = start; v <= stop; v += step)
+                yield return v;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            SeparateAvionics model;
+            // var model = new SeparateAvionics { PrintMessages = true, PrintReport = true }; ;
+            // var s1 = (ModelStats)model.CachedCalculate(ModelCase.RailsDriving, 100000f, 30000f, 90f, 30f);
+            // Console.WriteLine(s1.SpeedMadeGood);
+
+            model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
+            var s2 = (ModelStats)model.CachedCalculate(ModelCase.AIMDriving, 100000f, 40000f, 90f, 30f);
+            Console.WriteLine(s2.SpeedMadeGood);
+            PrintReport(model);
+
+            return;
+
+            model = new SeparateAvionics { PrintMessages = true, PrintReport = true };
+            var s3 = (ModelStats)model.CachedCalculate(ModelCase.ScienceDriving, 100000f, 30000f, 90f, 30f);
+            Console.WriteLine(s3.SpeedMadeGood);
+            PrintReport(model);
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnRails_Click(object sender, EventArgs e)
+        {
+            var downlink = ((int)numDownlink.Value) * 1000f;
+            var payload = ((int)numTestPldSpeed.Value) * 1000f;
+            RunTest(ModelCase.RailsDriving, downlink, payload);
+        }
+
+        private void btnScience_Click(object sender, EventArgs e)
+        {
+            var downlink = ((int)numDownlink.Value) * 1000f;
+            var payload = ((int)numTestPldSpeed.Value) * 1000f;
+            RunTest(ModelCase.ScienceDriving, downlink, payload);
+        }
+
+        private void btnAIM_Click(object sender, EventArgs e)
+        {
+            var downlink = ((int)numDownlink.Value) * 1000f;
+            var payload = ((int)numTestPldSpeed.Value) * 1000f;
+            RunTest(ModelCase.AIMDriving, downlink, payload);
+        }
+
+        private void RunTest(ModelCase mode, float downlink, float payload)
+        {
+            Console.WriteLine(@"Running test mode={0} downlink={1} payload={2}", mode, downlink, payload);
+            var model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
+            var s2 = (ModelStats)model.CachedCalculate(mode, downlink, payload, 90f, 30f);
+            Console.WriteLine(s2.SpeedMadeGood);
+            PrintReport(model);
         }
     }
 

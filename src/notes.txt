@@ -2,6 +2,15 @@ Questions
 
 Configurations
 * Separate avionics payload
-  * 
+  * SMG under different conditions
+    * Rails
+      * Vary downlink rate
+      * Vary payload allocation
+    * AIM
+      * Vary downlink rate
+      * Vary payload allocation
+    * Science
+      * Vary downlink rate
+      * Vary payload allocation
 
 * Integrated avionics

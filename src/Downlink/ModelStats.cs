@@ -2,10 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static Downlink.Model;
 
 namespace Downlink
 {
@@ -95,6 +92,9 @@ namespace Downlink
         public PacketReport GetPacketReport(IEnumerable<Packet> packets)
         {
             var lst = packets.ToList();
+            var packet = lst.FirstOrDefault(p => p.Latency < 0f);
+            if (packet != null)
+                Console.WriteLine(@"uh,  here");
             return new PacketReport
             {
                 Count = lst.Count,

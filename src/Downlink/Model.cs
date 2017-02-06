@@ -6,12 +6,14 @@ using System.Diagnostics;
 
 namespace Downlink
 {
+    public enum APID { IdlePacket, RoverHealth, RoverImagePair, PayloadHealth, DOCProspectingImage, DOCWaypointImage, AllAPIDS }
+    public enum ModelCase { RailsDriving, AIMDriving, ScienceDriving }
+
     // Case 4
     public abstract class Model
     {
         #region Global Variables
 
-        public enum APID { IdlePacket, RoverHealth, RoverImagePair, PayloadGeneral, DOCProspectingImage, DOCWaypointImage, AllAPIDS }
         public const int RP15FrameLength = 1115; // bytes
         public const int RP15FrameOverheead = 12;
 
@@ -29,7 +31,9 @@ namespace Downlink
         public float DOCAIMDecisionTime = 0f;
         public float DOCScienceDecisionTime = 30f;
 
-        private float _DownlinkRate = 100000f;
+        public int DefaultPacketQueueSize = 200;
+
+        private float _DownlinkRate = 100000f; // 100000f;
         public float DownlinkRate
         {
             get { return _DownlinkRate; }
@@ -81,7 +85,7 @@ namespace Downlink
 
         public float NIRVSSEvalLatency = 90f;
 
-        public const float EmergencyStopTime = 1000000f;
+        public const float EmergencyStopTime = 20000f;
 
         public bool PrintMessages = false;
         public bool PrintReport = false;
@@ -112,8 +116,9 @@ namespace Downlink
 
         // Components in all models
 
-        public enum ModelCase { Rails, AIM, ScienceStation }
-        public ModelCase TheCase = ModelCase.Rails;
+        public ModelCase TheCase = ModelCase.RailsDriving;
+
+        public bool IsBuilt = false;
 
         #endregion
 
@@ -132,7 +137,7 @@ namespace Downlink
 
         public List<Component> Components = new List<Component>();
 
-        public virtual void Build()        {        }
+        public virtual void Build() { IsBuilt = true; }
         public virtual void Start()
         {
             foreach (var c in Components) c.Start();
@@ -153,6 +158,8 @@ namespace Downlink
             {
                 var evt = EventQueue.Dequeue();
                 Time = evt.Time;
+                //TODO: big
+                //Console.WriteLine(Time);
                 evt.Execute(this);
 
                 if (Time >= EmergencyStopTime)
@@ -171,6 +178,8 @@ namespace Downlink
 
         public virtual void RunInternal()
         {
+            if (!IsBuilt)  // be sure
+                Build();
             if (TheModel != this && TheModel != null)
             {
                 if (TheModel.IsRunning)
@@ -185,6 +194,16 @@ namespace Downlink
             Loop();
             Stop();
             IsRunning = false;
+        }
+
+        public virtual void Reset()
+        {
+            EventMessages = new List<string>();
+            ReportMessages = new List<string>();
+            EventQueue = new SimplePriorityQueue<Event, float>();
+            _StopRequest = false;
+            Time = 0f;
+            foreach (var c in Components) c.Reset();
         }
 
         #endregion

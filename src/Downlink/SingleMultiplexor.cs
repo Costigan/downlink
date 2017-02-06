@@ -1,6 +1,4 @@
-﻿using Priority_Queue;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 
 namespace Downlink
 {
@@ -10,13 +8,14 @@ namespace Downlink
 
         public override void Build()
         {
+            base.Build();
             // Create the components
             Rover = new Rover { Model = this, RoverImageVC = RoverImageVC };
             MOS = new MOSTeam { Model = this, };
             GroundSystem = new GroundSystem { Model = this, };
-            FrameGenerator = new FrameGenerator { Model = this, DownlinkRate = DownlinkRate };
+            FrameGenerator = new FrameGenerator { Model = this };
             RoverHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.RoverHealth, BitsPerSecond = RoverHealthBitsPerSecond, PacketSize = 100, StartTimeOffset = 0f };
-            PayloadHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.PayloadGeneral, BitsPerSecond = PayloadWithoutDOCBitsPerSecond, PacketSize = 100, StartTimeOffset = 0.1f };
+            PayloadHighPacketGenerator = new PacketGenerator { Model = this, APID = APID.PayloadHealth, BitsPerSecond = PayloadWithoutDOCBitsPerSecond, PacketSize = 100, StartTimeOffset = 0.1f };
 
             // Link the objects together
             FrameGenerator.GroundSystem = GroundSystem;
@@ -54,12 +53,12 @@ namespace Downlink
 
     public class SingleMultiplexorRails : SingleMultiplexor
     {
-        public SingleMultiplexorRails() { TheCase = ModelCase.Rails; }
+        public SingleMultiplexorRails() { TheCase = ModelCase.RailsDriving; }
     }
 
     public class SingleMultiplexorScience : SingleMultiplexor
     {
-        public SingleMultiplexorScience() { TheCase = ModelCase.ScienceStation; }
+        public SingleMultiplexorScience() { TheCase = ModelCase.ScienceDriving; }
     }
 
     public class Sample
