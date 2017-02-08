@@ -52,7 +52,7 @@ namespace Downlink
             using (var sw = new StringWriter())
             {
                 m.Stats.Report(sw);
-                txtReport.Text = sw.ToString();
+                btnTest2.Text = sw.ToString();
             }
         }
 
@@ -285,7 +285,7 @@ namespace Downlink
         {
             var downlink = ((int)numDownlink.Value) * 1000f;
             var payload = ((int)numTestPldSpeed.Value) * 1000f;
-            RunTest(ModelCase.AIMDriving, downlink, payload);
+            RunTest(ModelCase.ScienceDriving, downlink, payload);
         }
 
         private void RunTest(ModelCase mode, float downlink, float payload)
@@ -295,6 +295,41 @@ namespace Downlink
             var s2 = (ModelStats)model.CachedCalculate(mode, downlink, payload, 90f, 30f);
             Console.WriteLine(s2.SpeedMadeGood);
             PrintReport(model);
+        }
+
+        private void button3_Click_1(object sender, EventArgs e)
+        {
+            var model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
+            var rates = new float[]{10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,100000, 120000, 140000, 160000, 180000,
+                200000, 220000, 240000,260000, 280000, 300000, 320000, 340000, 360000, 380000, 400000,420000, 440000, 460000, 480000,
+                500000, 520000, 540000, 560000,580000, 600000};
+            var speeds = rates.Select(rate => ((ModelStats)model.CachedCalculate(ModelCase.ScienceDriving, rate, 40000f, 90f, 30f)).SpeedMadeGood).ToArray();
+
+            /*
+            var speed100 = ((ModelStats)model.CachedCalculate(ModelCase.ScienceDriving, 100000f, 40000f, 90f, 30f)).SpeedMadeGood;
+            var speed200 = ((ModelStats)model.CachedCalculate(ModelCase.ScienceDriving, 200000f, 40000f, 90f, 30f)).SpeedMadeGood;
+            Console.WriteLine(speed100);
+            Console.WriteLine(speed200);*/
+
+            foreach (var speed in speeds)
+                Console.WriteLine(speed);
+        }
+
+        private void btnTest3_Click(object sender, EventArgs e)
+        {
+            var rates = new float[]{10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,100000, 120000, 140000, 160000, 180000,
+                200000, 220000, 240000,260000, 280000, 300000, 320000, 340000, 360000, 380000, 400000,420000, 440000, 460000, 480000,
+                500000, 520000, 540000, 560000,580000, 600000};
+            var speeds = rates.Select(rate =>
+            {
+                var model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
+                var speed = ((ModelStats)model.CachedCalculate(ModelCase.ScienceDriving, rate, 40000f, 90f, 30f)).SpeedMadeGood;
+                Console.WriteLine(speed);
+                return speed;
+            }
+            ).ToArray();
+            foreach (var speed in speeds)
+                Console.WriteLine(speed);
         }
     }
 

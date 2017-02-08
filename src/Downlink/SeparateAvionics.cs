@@ -41,6 +41,32 @@ namespace Downlink
             return (dynamic)Stats;
         }
 
+        Dictionary<Tuple<int, float, float, float, float>, dynamic> _calculationCache2 = new Dictionary<Tuple<int, float, float, float, float>, dynamic>();
+        public dynamic CachedCalculate2(ModelCase mcase, float downlinkRate, float payloadBitRate, float driverDecisionTime, float scienceDecisionTime)
+        {
+            var tuple = Tuple.Create((int)mcase, downlinkRate, payloadBitRate, driverDecisionTime, scienceDecisionTime);
+            dynamic val;
+            if (_calculationCache2.TryGetValue(tuple, out val))
+                return val;
+            val = Calculate2(mcase, downlinkRate, payloadBitRate, driverDecisionTime, scienceDecisionTime);
+            _calculationCache[tuple] = val;
+            return val;
+        }
+
+        public dynamic Calculate2(ModelCase mcase, float downlinkRate, float payloadBitRate, float driverDecisionTime, float scienceDecisionTime)
+        {
+            var m = Activator.CreateInstance(GetType()) as SeparateAvionics;
+            m.Build();
+            m.TheCase = mcase;
+            m.DownlinkRate = downlinkRate;
+            m.PayloadAvionics.BitRate = payloadBitRate;
+            m.DriverDecisionTime = driverDecisionTime;
+            m.DOCScienceDecisionTime = scienceDecisionTime;
+            m.RunInternal();
+            //Console.Write('.');
+            return (dynamic)m.Stats;
+        }
+
         public override void Build()
         {
             base.Build();

@@ -88,6 +88,7 @@ namespace Downlink
         public int DropCount = 0;
         public int ByteDropCount = 0;
         public int Size = 200;
+        public bool IsExpandable = true;  
         public int Count => Queue.Count + Stack.Count;
         public bool IsEmpty => Count == 0;
         public int ByteCount;
@@ -101,6 +102,14 @@ namespace Downlink
                 ByteCount += p.Length;
                 if (Owner != null)
                     Owner.WakeUp();
+            }
+            else if (IsExpandable)
+            {
+                Queue.Enqueue(p);
+                ByteCount += p.Length;
+                if (Owner != null)
+                    Owner.WakeUp();
+                Size = Math.Max(Size, Queue.Count);
             }
             else
             {
@@ -470,7 +479,6 @@ namespace Downlink
         }
     }
 
-
     public class Rover : Component
     {
         public PacketReceiver RoverHighPriorityReceiver;
@@ -622,6 +630,7 @@ namespace Downlink
             switch (Model.TheCase)
             {
                 case ModelCase.RailsDriving:
+                case ModelCase.AIMDriving:
                     {
                         if (p.APID==APID.RoverImagePair)
                         {
@@ -629,25 +638,6 @@ namespace Downlink
                             Model.Message("Driver starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                             // ProposedCommandTime is irrelevant in this case
                             Enqueue(Model.Time + Model.DriverDecisionTime, () => SendDriveCommand());
-                        }
-                        break;
-                    }
-                case ModelCase.AIMDriving:
-                    {
-                        if (p.APID == APID.RoverImagePair)
-                        {
-                            var ri = p as ImagePacket;
-                            Model.Message("Driver starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
-                            DriverMaybeSendCommand(Model.Time + Model.DriverDecisionTime);
-                        }
-                        else if (p.APID == APID.DOCWaypointImage)
-                        {
-                            var ri = p as ImagePacket;
-                            if (ri.IsLastDocWaypointImage)
-                            {
-                                Model.Message("Nirvss starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
-                                NirvssMaybeSendCommand(Model.Time + Model.DOCAIMDecisionTime);
-                            }
                         }
                         break;
                     }
@@ -662,7 +652,7 @@ namespace Downlink
                         else if (p.APID == APID.DOCWaypointImage)
                         {
                             var ri = p as ImagePacket;
-                            if (ri.SequenceNumber == 4)
+                            if (ri.IsLastDocWaypointImage)
                             {
                                 Model.Message("Nirvss starts image eval time={0} seq={1} pos={2}", ri.Timestamp, ri.SequenceNumber, ri.RoverPosition);
                                 NirvssMaybeSendCommand(Model.Time + Model.DOCScienceDecisionTime);

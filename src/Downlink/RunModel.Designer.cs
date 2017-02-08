@@ -33,10 +33,11 @@
             this.txtEvents = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.txtReport = new System.Windows.Forms.TextBox();
+            this.btnTest2 = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel1 = new System.Windows.Forms.Panel();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.button3 = new System.Windows.Forms.Button();
             this.btnScience = new System.Windows.Forms.Button();
             this.btnRails = new System.Windows.Forms.Button();
             this.numDownlink = new System.Windows.Forms.NumericUpDown();
@@ -58,6 +59,7 @@
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.panel2 = new System.Windows.Forms.Panel();
             this.btnRateVsDrops = new System.Windows.Forms.Button();
+            this.btnTest3 = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -114,7 +116,7 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.txtReport);
+            this.groupBox2.Controls.Add(this.btnTest2);
             this.groupBox2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBox2.Location = new System.Drawing.Point(0, 0);
             this.groupBox2.Name = "groupBox2";
@@ -123,16 +125,16 @@
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Report";
             // 
-            // txtReport
+            // btnTest2
             // 
-            this.txtReport.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtReport.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtReport.Location = new System.Drawing.Point(3, 16);
-            this.txtReport.Multiline = true;
-            this.txtReport.Name = "txtReport";
-            this.txtReport.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtReport.Size = new System.Drawing.Size(813, 616);
-            this.txtReport.TabIndex = 0;
+            this.btnTest2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnTest2.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnTest2.Location = new System.Drawing.Point(3, 16);
+            this.btnTest2.Multiline = true;
+            this.btnTest2.Name = "btnTest2";
+            this.btnTest2.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.btnTest2.Size = new System.Drawing.Size(813, 616);
+            this.btnTest2.TabIndex = 0;
             // 
             // splitContainer1
             // 
@@ -165,6 +167,8 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.btnTest3);
+            this.groupBox3.Controls.Add(this.button3);
             this.groupBox3.Controls.Add(this.btnScience);
             this.groupBox3.Controls.Add(this.btnRails);
             this.groupBox3.Controls.Add(this.numDownlink);
@@ -178,6 +182,16 @@
             this.groupBox3.TabIndex = 7;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Separate Avionics";
+            // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(6, 145);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(47, 23);
+            this.button3.TabIndex = 13;
+            this.button3.Text = "Test2";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.button3_Click_1);
             // 
             // btnScience
             // 
@@ -235,7 +249,7 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(6, 135);
+            this.button2.Location = new System.Drawing.Point(6, 188);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(170, 23);
             this.button2.TabIndex = 9;
@@ -424,6 +438,16 @@
             this.btnRateVsDrops.UseVisualStyleBackColor = true;
             this.btnRateVsDrops.Click += new System.EventHandler(this.btnRateVsDrops_Click);
             // 
+            // btnTest3
+            // 
+            this.btnTest3.Location = new System.Drawing.Point(59, 145);
+            this.btnTest3.Name = "btnTest3";
+            this.btnTest3.Size = new System.Drawing.Size(47, 23);
+            this.btnTest3.TabIndex = 14;
+            this.btnTest3.Text = "Test3";
+            this.btnTest3.UseVisualStyleBackColor = true;
+            this.btnTest3.Click += new System.EventHandler(this.btnTest3_Click);
+            // 
             // RunModel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -467,7 +491,7 @@
         private System.Windows.Forms.TextBox txtEvents;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.TextBox txtReport;
+        private System.Windows.Forms.TextBox btnTest2;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.CheckBox cbPrintMessages;
@@ -492,6 +516,8 @@
         private System.Windows.Forms.Button btnScience;
         private System.Windows.Forms.Button btnRails;
         private System.Windows.Forms.NumericUpDown numDownlink;
+        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.Button btnTest3;
     }
 }
 
