@@ -32,7 +32,6 @@ namespace Downlink
             PayloadHighPacketGenerator.Receiver = FrameGenerator.Buffers[PayloadHighPriority].PacketQueue;
 
             Rover.RoverImageReceiver = FrameGenerator.Buffers[RoverImageVC];
-            Rover.RoverHighPriorityReceiver = FrameGenerator.Buffers[Model.RoverHighPriorityVC];
             Rover.DOCHighPriorityReceiver = FrameGenerator.Buffers[Model.PayloadHighPriorityImage];
             Rover.DOCLowPriorityReceiver = FrameGenerator.Buffers[Model.PayloadLowPriorityImage];
         }

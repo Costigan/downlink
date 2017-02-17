@@ -36,7 +36,9 @@
             this.btnTest2 = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.button4 = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.btnTest3 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
             this.btnScience = new System.Windows.Forms.Button();
             this.btnRails = new System.Windows.Forms.Button();
@@ -59,7 +61,7 @@
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.panel2 = new System.Windows.Forms.Panel();
             this.btnRateVsDrops = new System.Windows.Forms.Button();
-            this.btnTest3 = new System.Windows.Forms.Button();
+            this.button5 = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -155,6 +157,8 @@
             // 
             // panel1
             // 
+            this.panel1.Controls.Add(this.button5);
+            this.panel1.Controls.Add(this.button4);
             this.panel1.Controls.Add(this.groupBox3);
             this.panel1.Controls.Add(this.groupBox4);
             this.panel1.Controls.Add(this.cbPrintMessages);
@@ -164,6 +168,16 @@
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(234, 667);
             this.panel1.TabIndex = 5;
+            // 
+            // button4
+            // 
+            this.button4.Location = new System.Drawing.Point(15, 535);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(75, 23);
+            this.button4.TabIndex = 8;
+            this.button4.Text = "button4";
+            this.button4.UseVisualStyleBackColor = true;
+            this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
             // groupBox3
             // 
@@ -182,6 +196,16 @@
             this.groupBox3.TabIndex = 7;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Separate Avionics";
+            // 
+            // btnTest3
+            // 
+            this.btnTest3.Location = new System.Drawing.Point(59, 145);
+            this.btnTest3.Name = "btnTest3";
+            this.btnTest3.Size = new System.Drawing.Size(47, 23);
+            this.btnTest3.TabIndex = 14;
+            this.btnTest3.Text = "Test3";
+            this.btnTest3.UseVisualStyleBackColor = true;
+            this.btnTest3.Click += new System.EventHandler(this.btnTest3_Click);
             // 
             // button3
             // 
@@ -438,15 +462,15 @@
             this.btnRateVsDrops.UseVisualStyleBackColor = true;
             this.btnRateVsDrops.Click += new System.EventHandler(this.btnRateVsDrops_Click);
             // 
-            // btnTest3
+            // button5
             // 
-            this.btnTest3.Location = new System.Drawing.Point(59, 145);
-            this.btnTest3.Name = "btnTest3";
-            this.btnTest3.Size = new System.Drawing.Size(47, 23);
-            this.btnTest3.TabIndex = 14;
-            this.btnTest3.Text = "Test3";
-            this.btnTest3.UseVisualStyleBackColor = true;
-            this.btnTest3.Click += new System.EventHandler(this.btnTest3_Click);
+            this.button5.Location = new System.Drawing.Point(12, 564);
+            this.button5.Name = "button5";
+            this.button5.Size = new System.Drawing.Size(75, 23);
+            this.button5.TabIndex = 9;
+            this.button5.Text = "button5";
+            this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.button5_Click);
             // 
             // RunModel
             // 
@@ -518,6 +542,8 @@
         private System.Windows.Forms.NumericUpDown numDownlink;
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.Button btnTest3;
+        private System.Windows.Forms.Button button4;
+        private System.Windows.Forms.Button button5;
     }
 }
 

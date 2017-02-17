@@ -49,7 +49,7 @@ namespace Downlink
             if (_calculationCache2.TryGetValue(tuple, out val))
                 return val;
             val = Calculate2(mcase, downlinkRate, payloadBitRate, driverDecisionTime, scienceDecisionTime);
-            _calculationCache[tuple] = val;
+            _calculationCache2[tuple] = val;
             return val;
         }
 
@@ -96,9 +96,7 @@ namespace Downlink
             FrameGenerator.Buffers = Enumerable.Range(0, timeouts.Length).Select(i => new VirtualChannelBuffer { Model = this, VirtualChannel = i, PacketQueue = new PacketQueue { Size = PacketQueueSize }, Timeout = timeouts[i], Owner = FrameGenerator }).ToList();
 
             RoverHighPacketGenerator.Receiver = FrameGenerator.Buffers[RoverHighPriorityVC].PacketQueue;
-
             Rover.RoverImageReceiver = FrameGenerator.Buffers[RoverImageVC];
-            Rover.RoverHighPriorityReceiver = FrameGenerator.Buffers[Model.RoverHighPriorityVC];
 
             PayloadHighPacketGenerator.Receiver = PayloadAvionics.Queues[0];
             Rover.DOCHighPriorityReceiver = PayloadAvionics.Queues[1];

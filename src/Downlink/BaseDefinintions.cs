@@ -132,6 +132,7 @@ namespace Downlink
         public int Capacity = FrameCapacity;
         public bool IsFull => Capacity == 0;
         public bool IsEmpty => Capacity == FrameCapacity;
+        public float GroundReceipt = 0f;
         public List<PacketFragment> Fragments = new List<PacketFragment>();
         public void Add(PacketFragment f)
         {
@@ -139,6 +140,7 @@ namespace Downlink
             Capacity -= f.Length;
             Debug.Assert(Capacity >= 0);
         }
+        public float FillFraction => Fragments.Count < 1 ? 0f : Fragments.Sum(fr => fr.Packet.APID == APID.IdlePacket ? 0 : fr.Length) / (float)FrameCapacity;
     }
 
     public class ImagePacket  : Packet

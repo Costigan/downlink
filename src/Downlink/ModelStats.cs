@@ -35,7 +35,8 @@ namespace Downlink
         public Dictionary<APID, int> PacketsInFlightByAPID { get; set; }
         public Dictionary<APID, int> BytesInFlightByAPID { get; set; }
 
-        List<Packet> Packets { get; set; }
+        internal List<Packet> Packets { get; set; }
+        internal List<Frame> Frames { get; set; }
 
         public virtual void Report(List<string> rows)
         {
@@ -103,6 +104,30 @@ namespace Downlink
                 MaxLatency = lst.SafeMax(p => p.Latency),
                 LatencyStdDev = lst.StandardDeviation(p => p.Latency)
             };
+        }
+
+        public float[] ChannelUsage(float gap = 1f)
+        {
+            var r = new List<float>();
+            if (Frames == null || Frames.Count < 1) return r.ToArray();
+            var t = Frames[0].GroundReceipt;
+            var nextt = t + gap;
+            var sum = 0f;
+            var count = 0;
+            foreach (var f in Frames)
+            {
+                while (f.GroundReceipt > nextt)
+                {
+                    r.Add(count == 0 ? 0f : sum / count);
+                    sum = 0f;
+                    count = 0;
+                    nextt += gap;
+                }
+                sum += f.FillFraction;
+                count++;
+            }
+            r.Add(count == 0 ? 0f : sum / count);
+            return r.ToArray();
         }
     }
 

@@ -68,6 +68,7 @@
     <Compile Include="HSLColor.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Model.cs" />
+    <Compile Include="Model5.cs" />
     <Compile Include="ModelStats.cs" />
     <Compile Include="RunModel.cs">
       <SubType>Form</SubType>
@@ -78,6 +79,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SeparateAvionics.cs" />
+    <Compile Include="SimpleModel.cs" />
     <Compile Include="SingleMultiplexor.cs" />
     <Compile Include="tests\TestClass1.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">

@@ -71,7 +71,16 @@ namespace Downlink
                     new SeparateAvionicsRails(),
                     new SeparateAvionicsAIM(),
                     new SeparateAvionicsScience(),
-                    new SeparateAvionicsRailsSingleMove()
+                    new SeparateAvionicsRailsSingleMove(),
+                    new SimpleModel100(),
+                    new SimpleModel400(),
+                    new SimpleModel600(),
+                    new Model5a(),
+                    new Model5b(),
+                    new Model5c(),
+                    new Model5d(),
+                    new Model5e(),
+                    new SeparateAvionicsScience() {DownlinkRate=110000f },
                 }
                 );
             lbPlots.Items.AddRange(
@@ -291,8 +300,9 @@ namespace Downlink
         private void RunTest(ModelCase mode, float downlink, float payload)
         {
             Console.WriteLine(@"Running test mode={0} downlink={1} payload={2}", mode, downlink, payload);
-            var model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
-            var s2 = (ModelStats)model.CachedCalculate(mode, downlink, payload, 90f, 30f);
+            //var model = new SeparateAvionicsAIM { PrintMessages = true, PrintReport = true };
+            var model = new SimpleModel100 { PrintMessages = true, PrintReport = true };
+            var s2 = (ModelStats)model.Calculate(mode, downlink, payload, 90f, 30f);
             Console.WriteLine(s2.SpeedMadeGood);
             PrintReport(model);
         }
@@ -330,6 +340,27 @@ namespace Downlink
             ).ToArray();
             foreach (var speed in speeds)
                 Console.WriteLine(speed);
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            var m = new SeparateAvionics();
+            foreach (var r in new float[] { 100000f, 110000f, 120000f, 130000f })
+            {
+                var stats = m.CachedCalculate2(ModelCase.ScienceDriving, r, 40000f, 90f, 30f) as ModelStats;
+                var v = stats.PacketReportByAPID[APID.DOCWaypointImage].AvgLatency;
+                Console.WriteLine(v);
+            }
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            var m = new Model5();
+            foreach (var r in new float[] { 30000f, 25000f, 20000f, 15000f })
+            {
+                var smg = (m.Calculate3(ModelCase.ScienceDriving, 100000f, 90f, 30f, 30000f, r, 13800f,13800f) as ModelStats).SpeedMadeGood;
+                Console.WriteLine(smg);
+            }
         }
     }
 

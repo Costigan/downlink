@@ -18,9 +18,10 @@ namespace Downlink
         public const int RP15FrameOverheead = 12;
 
         public bool CaptureStates = true;
+        public float PathMultiplier = 3f;
 
         public float DriveStep = 4.5f;
-        public float DriveSpeed = 0.01f;
+        public float DriveSpeed = 0.1f;
         public float UplinkLatency = 10f + 1.3f;
         public float DownlinkLatency;
 
@@ -70,7 +71,8 @@ namespace Downlink
 
         public const float NIRVSSProspectingBitsPerSecond = 11552f;
 
-        public const float PayloadWithoutDOCBitsPerSecond = AvionicsProspectingBitsPerSecond + VMLProspectingBitsPerSecond + NSSProspectingBitsPerSecond + NIRVSSProspectingBitsPerSecond;
+        // NSSProspectingBitsPerSecond was included here, but it's in TO_DRIVE
+        public const float PayloadWithoutDOCBitsPerSecond = AvionicsProspectingBitsPerSecond + VMLProspectingBitsPerSecond + NIRVSSProspectingBitsPerSecond;
 
         // The size of various payload packets, in bytes.  Note that I should be rounding up, but I'm not, for now.
         // These come from Payload Data Rates per Activity_20Jan2017.xlsx
@@ -85,7 +87,7 @@ namespace Downlink
 
         public float NIRVSSEvalLatency = 90f;
 
-        public const float EmergencyStopTime = 20000f;
+        public const float EmergencyStopTime = 60000f;
 
         public bool PrintMessages = false;
         public bool PrintReport = false;
@@ -337,7 +339,7 @@ namespace Downlink
             Stats.DownlinkRate = DownlinkRate;
             Stats.FinalPosition = Rover.Position;
             Stats.FinalTime = Time;
-            Stats.SpeedMadeGood = 100f * Rover.Position / Time;
+            Stats.SpeedMadeGood = 100f * Rover.Position / Time / PathMultiplier;  // Note the path multiplier here
             Stats.TotalFrameCount = GroundSystem.FrameCount;
             Stats.FrameCountPerVC = GroundSystem.FrameCounter;
             Stats.PacketDropCountPerVC = FrameGenerator.Buffers.Select(c => (long)c.PacketQueue.DropCount).ToArray();
@@ -361,6 +363,8 @@ namespace Downlink
                 Stats.BytesInFlightByAPID.Add((APID)a, byteCount);
             }
             Stats.TotalPacketsInFlight = Stats.PacketsInFlightByAPID.Values.Sum();
+            Stats.Packets = GroundSystem?.Packets;
+            Stats.Frames = GroundSystem?.Frames;
         }
 
         public override void PacketsInFlight(APID apid, ref int packetCount, ref int byteCount)
