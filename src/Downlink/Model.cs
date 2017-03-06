@@ -53,7 +53,8 @@ namespace Downlink
         public int PacketQueueSize = 1000;
         public float RoverHealthBitsPerSecond = 30000f;  // was TO_DRIVE 46669.9f, updated per Howard estimate
 
-        public const int NavPayload = (int)(2097152f * 12f / 2f / 4f / 8f); // two images
+        public int NavPayload => (int)(2097152f * 12f / 2f / 8f / NavCompression); // two images subframing=2, compression=4, bits->bytes=8
+        public float NavCompression = 4f;
 
         public const float AvionicsLowDataRate = 1491f;
         public const float AvionicsNominalDataRate = 2485f;

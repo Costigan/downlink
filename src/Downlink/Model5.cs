@@ -14,7 +14,7 @@ namespace Downlink
         public float[] FrameTimeouts = new float[] { float.MaxValue, 1f, 1f, 1f };
         public new PacketGenerator2 RoverHighPacketGenerator, PayloadHighPacketGenerator;
 
-        Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float>>, dynamic> _cache = new Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float>>, dynamic>();
+        Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float, float>>, dynamic> _cache = new Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float, float>>, dynamic>();
         public dynamic CachedCalculate3(
             ModelCase mcase,
             float downlinkRate,
@@ -23,10 +23,11 @@ namespace Downlink
             float to_drive_moving,
             float to_drive_stopped,
             float to_payload_moving,
-            float to_payload_stopped
+            float to_payload_stopped,
+            float nav_compression = 4f
             )
         {
-            var tuple = Tuple.Create((int)mcase, downlinkRate, driverDecisionTime, scienceDecisionTime, to_drive_moving, to_drive_stopped, to_payload_moving, to_payload_stopped);
+            var tuple = CreateForCache((int)mcase, downlinkRate, driverDecisionTime, scienceDecisionTime, to_drive_moving, to_drive_stopped, to_payload_moving, to_payload_stopped, nav_compression);
             dynamic val;
             if (_cache.TryGetValue(tuple, out val))
                 return val;
@@ -41,6 +42,7 @@ namespace Downlink
             m.TO_DRIVE_stopped = to_drive_stopped;
             m.TO_PAYLOAD_moving = to_payload_moving;
             m.TO_PAYLOAD_stopped = to_payload_stopped;
+            m.NavCompression = nav_compression;
             m.RunInternal();
             //Console.Write('.');
             val= (dynamic)m.Stats;
@@ -48,6 +50,9 @@ namespace Downlink
             _cache[tuple] = val;
             return val;
         }
+
+        Tuple<int, float, float, float, float, float, float, Tuple<float, float>> CreateForCache(int a, float b, float c, float d, float e, float f, float g, float h, float i)
+            => new Tuple<int, float, float, float, float, float, float, Tuple<float, float>>(a, b, c, d, e, f, g, new Tuple<float, float>(h, i));
 
         public dynamic Calculate3(
             ModelCase mcase,
