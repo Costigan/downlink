@@ -18,7 +18,7 @@ namespace Downlink
         public const int RP15FrameOverheead = 12;
 
         public bool CaptureStates = true;
-        public float PathMultiplier = 3f;
+        public float PathMultiplier = 2f;
 
         public float DriveStep = 4.5f;
         public float DriveSpeed = 0.1f;
@@ -51,10 +51,14 @@ namespace Downlink
 
         // Input variables (expected to change)
         public int PacketQueueSize = 1000;
-        public float RoverHealthBitsPerSecond = 30000f;  // was TO_DRIVE 46669.9f, updated per Howard estimate
+        public float RoverHealthBitsPerSecond = 19000f; // changed 9/20/17, was 30000f;  // was TO_DRIVE 46669.9f, updated per Howard estimate
 
-        public int NavPayload => (int)(2097152f * 12f / 2f / 8f / NavCompression); // two images subframing=2, compression=4, bits->bytes=8
-        public float NavCompression = 4f;
+        //public int NavPayload => (int)(2097152f * 12f / 2f / 8f / NavCompression); // two images subframing=2, compression=4, bits->bytes=8
+        //public float NavCompression = 4f;
+
+        // Modified 3/23/17 to reflect stereo study numbers
+        public int NavPayload => (int)(2 * 1936 * 1216 * 12 / 2f / 8f / NavCompression); // two images subframing=2, compression=4, bits->bytes=8
+        public float NavCompression = 6f;
 
         public const float AvionicsLowDataRate = 1491f;
         public const float AvionicsNominalDataRate = 2485f;

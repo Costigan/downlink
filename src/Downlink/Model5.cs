@@ -7,12 +7,22 @@ namespace Downlink
     //  This is Model4 with the ability to change the payload and drive rates
     public class Model5 : SharedModel
     {
-        public float TO_DRIVE_moving { get { return RoverHighPacketGenerator.BitsPerSecondMoving; } set { RoverHighPacketGenerator.BitsPerSecondMoving = value; } }
+        public float TO_DRIVE_moving
+        {
+            get
+            {
+                return RoverHighPacketGenerator.BitsPerSecondMoving;
+            }
+            set
+            {
+                RoverHighPacketGenerator.BitsPerSecondMoving = value;
+            }
+        }
         public float TO_DRIVE_stopped { get { return RoverHighPacketGenerator.BitsPerSecondStopped; } set { RoverHighPacketGenerator.BitsPerSecondStopped = value; } }
         public float TO_PAYLOAD_moving { get { return PayloadHighPacketGenerator.BitsPerSecondMoving; } set { PayloadHighPacketGenerator.BitsPerSecondMoving = value; } }
         public float TO_PAYLOAD_stopped { get { return PayloadHighPacketGenerator.BitsPerSecondStopped; } set { PayloadHighPacketGenerator.BitsPerSecondStopped = value; } }
         public float[] FrameTimeouts = new float[] { float.MaxValue, 1f, 1f, 1f };
-        public new PacketGenerator2 RoverHighPacketGenerator, PayloadHighPacketGenerator;
+        public new PacketGenerator2 RoverHighPacketGenerator = new PacketGenerator2(), PayloadHighPacketGenerator = new PacketGenerator2();
 
         Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float, float>>, dynamic> _cache = new Dictionary<Tuple<int, float, float, float, float, float, float, Tuple<float, float>>, dynamic>();
         public dynamic CachedCalculate3(

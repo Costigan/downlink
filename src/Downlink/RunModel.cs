@@ -63,9 +63,11 @@ namespace Downlink
 
         private void RunModel_Load(object sender, EventArgs e)
         {
-            lbModel.Items.AddRange(
-                new Model[]
-                {
+            try
+            {
+                lbModel.Items.AddRange(
+                    new Model[]
+                    {
                     new SingleMultiplexorRails(),
                     new SingleMultiplexorScience(),
                     new SeparateAvionicsRails(),
@@ -81,16 +83,20 @@ namespace Downlink
                     new Model5d(),
                     new Model5e(),
                     new SeparateAvionicsScience() {DownlinkRate=110000f },
-                }
-                );
-            lbPlots.Items.AddRange(
-                new PlotAction[]
-                {
+                    }
+                    );
+                lbPlots.Items.AddRange(
+                    new PlotAction[]
+                    {
                 new PlotAction { Name = "Plot VC queue lengths", Action = () => PlotVCQueueLengths() },
                 new PlotAction { Name = "Plot VC queue byte counts", Action = () => PlotVCQueueByteCounts() },
                 new PlotAction { Name = "Plot VC queue drops", Action = () => PlotVCQueueDrops() },
                 new PlotAction { Name = "Clear Graph", Action = () => zed1.GraphPane.CurveList.Clear() }
-                });
+                    });
+            } catch (Exception e1)
+            {
+                Console.Error.WriteLine(e1);
+            }
         }
 
         protected Color[] Colors = new Color[]
